@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -51,66 +52,6 @@ const defaultPresets: ThemePreset[] = [
       text: 'rgb(243, 244, 246)', // gray-100
       textSecondary: 'rgb(156, 163, 175)', // gray-400
       border: 'rgb(55, 65, 81)', // gray-700
-    },
-    opacity: 0.9,
-  },
-  {
-    id: 'midnight-glow',
-    name: 'midnight-glow',
-    displayName: 'Midnight Glow',
-    emoji: '🌌',
-    colors: {
-      background: 'rgb(15, 23, 42)', // slate-900
-      surface: 'rgb(30, 41, 59)', // slate-800
-      accent: 'rgb(6, 182, 212)', // cyan-500 (neon blue)
-      text: 'rgb(248, 250, 252)', // slate-50
-      textSecondary: 'rgb(148, 163, 184)', // slate-400
-      border: 'rgb(51, 65, 85)', // slate-700
-    },
-    opacity: 0.95,
-  },
-  {
-    id: 'forest-zen',
-    name: 'forest-zen',
-    displayName: 'Forest Zen',
-    emoji: '🌲',
-    colors: {
-      background: 'rgb(20, 83, 45)', // green-800
-      surface: 'rgb(22, 101, 52)', // green-700
-      accent: 'rgb(245, 245, 220)', // beige
-      text: 'rgb(240, 253, 244)', // green-50
-      textSecondary: 'rgb(187, 247, 208)', // green-200
-      border: 'rgb(34, 197, 94)', // green-500
-    },
-    opacity: 0.9,
-  },
-  {
-    id: 'hacker-black',
-    name: 'hacker-black',
-    displayName: 'Hacker Black',
-    emoji: '💻',
-    colors: {
-      background: 'rgb(0, 0, 0)', // pure black
-      surface: 'rgb(10, 10, 10)', // almost black
-      accent: 'rgb(34, 197, 94)', // green-500 (neon green)
-      text: 'rgb(34, 197, 94)', // green-500
-      textSecondary: 'rgb(74, 222, 128)', // green-400
-      border: 'rgb(34, 197, 94)', // green-500
-    },
-    opacity: 1.0,
-  },
-  {
-    id: 'solar-storm',
-    name: 'solar-storm',
-    displayName: 'Solar Storm',
-    emoji: '🔥',
-    colors: {
-      background: 'rgb(124, 45, 18)', // orange-800
-      surface: 'rgb(154, 52, 18)', // orange-700
-      accent: 'rgb(239, 68, 68)', // red-500
-      text: 'rgb(255, 237, 213)', // orange-100
-      textSecondary: 'rgb(254, 215, 170)', // orange-200
-      border: 'rgb(234, 88, 12)', // orange-600
     },
     opacity: 0.9,
   },
