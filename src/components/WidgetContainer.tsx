@@ -6,10 +6,11 @@ import ToDoWidget from './widgets/ToDoWidget';
 import TimerWidget from './widgets/TimerWidget';
 import BookmarkWidget from './widgets/BookmarkWidget';
 import SpotifyWidget from './widgets/SpotifyWidget';
+import LiveAnalyticsWidget from './widgets/LiveAnalyticsWidget';
 
 interface Widget {
   id: string;
-  type: 'notes' | 'todo' | 'timer' | 'bookmark' | 'spotify';
+  type: 'notes' | 'todo' | 'timer' | 'bookmark' | 'spotify' | 'analytics';
   order: number;
   enabled: boolean;
 }
@@ -38,11 +39,12 @@ const WidgetContainer: React.FC = () => {
   };
 
   const getDefaultWidgets = (): Widget[] => [
-    { id: 'notes-1', type: 'notes', order: 0, enabled: true },
-    { id: 'todo-1', type: 'todo', order: 1, enabled: true },
-    { id: 'timer-1', type: 'timer', order: 2, enabled: true },
-    { id: 'bookmark-1', type: 'bookmark', order: 3, enabled: true },
-    { id: 'spotify-1', type: 'spotify', order: 4, enabled: true },
+    { id: 'analytics-1', type: 'analytics', order: 0, enabled: true },
+    { id: 'notes-1', type: 'notes', order: 1, enabled: true },
+    { id: 'todo-1', type: 'todo', order: 2, enabled: true },
+    { id: 'timer-1', type: 'timer', order: 3, enabled: true },
+    { id: 'bookmark-1', type: 'bookmark', order: 4, enabled: true },
+    { id: 'spotify-1', type: 'spotify', order: 5, enabled: true },
   ];
 
   const handleDragEnd = async (result: DropResult) => {
@@ -72,6 +74,8 @@ const WidgetContainer: React.FC = () => {
 
   const renderWidget = (widget: Widget) => {
     switch (widget.type) {
+      case 'analytics':
+        return <LiveAnalyticsWidget key={widget.id} widgetId={widget.id} />;
       case 'notes':
         return <NotesWidget key={widget.id} widgetId={widget.id} />;
       case 'todo':

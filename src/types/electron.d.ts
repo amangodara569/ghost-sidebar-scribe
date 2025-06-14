@@ -40,6 +40,13 @@ export interface IElectronAPI {
   'spotify:prev': () => Promise<void>;
   'spotify:setVolume': (volume: number) => Promise<void>;
   
+  // Focus Tracking & Analytics
+  'focus:getStatsToday': () => Promise<any>;
+  'focus:getCurrentSession': () => Promise<any>;
+  'focus:getSessionHistory': (days: number) => Promise<any[]>;
+  'recommendations:getLatest': () => Promise<any[]>;
+  'recommendations:dismiss': (id: string) => Promise<void>;
+  
   // Widgets
   'widgets:getAll': () => Promise<any[]>;
   'widgets:updateOrder': (widgets: any[]) => Promise<void>;
