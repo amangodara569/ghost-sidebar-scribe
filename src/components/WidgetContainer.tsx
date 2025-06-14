@@ -38,6 +38,7 @@ import ScratchpadWidget from './widgets/ScratchpadWidget';
 import StickyNotesWidget from './widgets/StickyNotesWidget';
 import FocusTrackerWidget from './widgets/FocusTrackerWidget';
 import { useFocusTracker } from '@/hooks/useFocusTracker';
+import WriterPad from './WriterPad';
 
 interface Widget {
   id: string;
@@ -51,6 +52,7 @@ const WidgetContainer: React.FC = () => {
   const [isThemeManagerOpen, setIsThemeManagerOpen] = useState(false);
   const [isNotificationManagerOpen, setIsNotificationManagerOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isWriterPadOpen, setIsWriterPadOpen] = useState(false);
   const [currentToast, setCurrentToast] = useState<any>(null);
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
@@ -97,6 +99,10 @@ const WidgetContainer: React.FC = () => {
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'S') {
         event.preventDefault();
         setIsSettingsOpen(prev => !prev);
+      }
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'W') {
+        event.preventDefault();
+        setIsWriterPadOpen(prev => !prev);
       }
     };
 
@@ -303,181 +309,210 @@ const WidgetContainer: React.FC = () => {
   };
 
   return (
-    <SidebarOverlay 
-      isVisible={isSidebarVisible} 
-      onToggleVisibility={() => setIsSidebarVisible(!isSidebarVisible)}
-    >
-      <div className="sidebar-content sidebar-resize-transition">
-        {/* Daily Summary Popup */}
-        <DailySummaryPopup />
+    <>
+      <SidebarOverlay 
+        isVisible={isSidebarVisible} 
+        onToggleVisibility={() => setIsSidebarVisible(!isSidebarVisible)}
+      >
+        <div className="sidebar-content sidebar-resize-transition">
+          {/* Daily Summary Popup */}
+          <DailySummaryPopup />
 
-        {/* Workspace Manager */}
-        <div className="sidebar-widget" style={{ 
-          backgroundColor: 'var(--theme-surface)',
-          borderColor: 'var(--theme-border)',
-          border: '1px solid'
-        }}>
-          <WorkspaceManager />
-        </div>
-
-        {/* VibeMind AI Assistant */}
-        <div className="sidebar-widget" style={{ 
-          backgroundColor: 'var(--theme-surface)',
-          borderColor: 'var(--theme-border)',
-          border: '1px solid'
-        }}>
-          <VibeMind currentWidget={currentFocusWidget} />
-        </div>
-
-        {/* Control Buttons */}
-        <div className="sidebar-button-group" style={{ justifyContent: 'flex-end' }}>
-          <Button
-            onClick={() => setIsNotificationManagerOpen(true)}
-            className="sidebar-button relative"
-            style={{ 
-              backgroundColor: 'var(--theme-surface)',
-              color: 'var(--theme-accent)',
-              border: `1px solid var(--theme-border)`
-            }}
-            title="Notifications"
-            aria-label={`Notifications ${pendingCount > 0 ? `(${pendingCount} pending)` : ''}`}
-          >
-            <Bell className="w-4 h-4" />
-            {pendingCount > 0 && (
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
-                {pendingCount > 9 ? '9+' : pendingCount}
-              </div>
-            )}
-          </Button>
-          
-          <Button
-            onClick={openPluginStore}
-            className="sidebar-button"
-            style={{ 
-              backgroundColor: 'var(--theme-surface)',
-              color: 'var(--theme-accent)',
-              border: `1px solid var(--theme-border)`
-            }}
-            title="Plugin Store"
-            aria-label="Open Plugin Store"
-          >
-            <Plug className="w-4 h-4" />
-          </Button>
-
-          <Button
-            onClick={() => setIsSettingsOpen(true)}
-            className="sidebar-button"
-            style={{ 
-              backgroundColor: 'var(--theme-surface)',
-              color: 'var(--theme-accent)',
-              border: `1px solid var(--theme-border)`
-            }}
-            title="Settings (Ctrl+Shift+S)"
-            aria-label="Open Settings"
-          >
-            <Settings className="w-4 h-4" />
-          </Button>
-          
-          <Button
-            onClick={() => setIsThemeManagerOpen(true)}
-            className="sidebar-button"
-            style={{ 
-              backgroundColor: 'var(--theme-surface)',
-              color: 'var(--theme-accent)',
-              border: `1px solid var(--theme-border)`
-            }}
-            title="Theme Manager (Ctrl+Shift+T)"
-            aria-label="Open Theme Manager"
-          >
-            <Palette className="w-4 h-4" />
-          </Button>
-        </div>
-
-        {/* Voice Controller */}
-        <div className="fixed bottom-4 right-4 z-50">
-          <div 
-            className="rounded-lg border shadow-lg backdrop-blur-sm"
-            style={{
-              backgroundColor: `var(--theme-surface)`,
-              borderColor: `var(--theme-border)`,
-            }}
-          >
-            <VoiceController
-              isEnabled={isVoiceEnabled}
-              onToggleEnabled={setIsVoiceEnabled}
-              onVoiceCommand={() => {}}
-            />
+          {/* Workspace Manager */}
+          <div className="sidebar-widget" style={{ 
+            backgroundColor: 'var(--theme-surface)',
+            borderColor: 'var(--theme-border)',
+            border: '1px solid'
+          }}>
+            <WorkspaceManager />
           </div>
+
+          {/* VibeMind AI Assistant */}
+          <div className="sidebar-widget" style={{ 
+            backgroundColor: 'var(--theme-surface)',
+            borderColor: 'var(--theme-border)',
+            border: '1px solid'
+          }}>
+            <VibeMind currentWidget={currentFocusWidget} />
+          </div>
+
+          {/* Writer Pad Toggle Button */}
+          <div className="sidebar-widget" style={{ 
+            backgroundColor: 'var(--theme-surface)',
+            borderColor: 'var(--theme-border)',
+            border: '1px solid'
+          }}>
+            <Button
+              onClick={() => setIsWriterPadOpen(true)}
+              className="w-full flex items-center gap-2 p-3"
+              style={{ 
+                backgroundColor: 'transparent',
+                color: 'var(--theme-text)',
+                border: 'none'
+              }}
+              title="Open Writer Pad (Ctrl+Shift+W)"
+            >
+              <span className="text-lg">✍️</span>
+              <span>Writer Mode</span>
+            </Button>
+          </div>
+
+          {/* Control Buttons */}
+          <div className="sidebar-button-group" style={{ justifyContent: 'flex-end' }}>
+            <Button
+              onClick={() => setIsNotificationManagerOpen(true)}
+              className="sidebar-button relative"
+              style={{ 
+                backgroundColor: 'var(--theme-surface)',
+                color: 'var(--theme-accent)',
+                border: `1px solid var(--theme-border)`
+              }}
+              title="Notifications"
+              aria-label={`Notifications ${pendingCount > 0 ? `(${pendingCount} pending)` : ''}`}
+            >
+              <Bell className="w-4 h-4" />
+              {pendingCount > 0 && (
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
+                  {pendingCount > 9 ? '9+' : pendingCount}
+                </div>
+              )}
+            </Button>
+            
+            <Button
+              onClick={openPluginStore}
+              className="sidebar-button"
+              style={{ 
+                backgroundColor: 'var(--theme-surface)',
+                color: 'var(--theme-accent)',
+                border: `1px solid var(--theme-border)`
+              }}
+              title="Plugin Store"
+              aria-label="Open Plugin Store"
+            >
+              <Plug className="w-4 h-4" />
+            </Button>
+
+            <Button
+              onClick={() => setIsSettingsOpen(true)}
+              className="sidebar-button"
+              style={{ 
+                backgroundColor: 'var(--theme-surface)',
+                color: 'var(--theme-accent)',
+                border: `1px solid var(--theme-border)`
+              }}
+              title="Settings (Ctrl+Shift+S)"
+              aria-label="Open Settings"
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
+            
+            <Button
+              onClick={() => setIsThemeManagerOpen(true)}
+              className="sidebar-button"
+              style={{ 
+                backgroundColor: 'var(--theme-surface)',
+                color: 'var(--theme-accent)',
+                border: `1px solid var(--theme-border)`
+              }}
+              title="Theme Manager (Ctrl+Shift+T)"
+              aria-label="Open Theme Manager"
+            >
+              <Palette className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Voice Controller */}
+          <div className="fixed bottom-4 right-4 z-50">
+            <div 
+              className="rounded-lg border shadow-lg backdrop-blur-sm"
+              style={{
+                backgroundColor: `var(--theme-surface)`,
+                borderColor: `var(--theme-border)`,
+              }}
+            >
+              <VoiceController
+                isEnabled={isVoiceEnabled}
+                onToggleEnabled={setIsVoiceEnabled}
+                onVoiceCommand={() => {}}
+              />
+            </div>
+          </div>
+
+          {/* Widget Grid */}
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="widgets">
+              {(provided) => (
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="flex flex-col gap-3"
+                >
+                  {widgets
+                    .filter(widget => widget.enabled)
+                    .sort((a, b) => a.order - b.order)
+                    .map((widget, index) => (
+                      <Draggable key={widget.id} draggableId={widget.id} index={index}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            className={`
+                              sidebar-widget transition-all duration-200
+                              ${snapshot.isDragging ? 'shadow-2xl scale-105' : 'shadow-lg'}
+                            `}
+                            style={{
+                              backgroundColor: `var(--theme-surface)`,
+                              borderColor: `var(--theme-border)`,
+                              border: '1px solid',
+                              opacity: `var(--theme-opacity)`,
+                              ...provided.draggableProps.style,
+                            }}
+                          >
+                            {renderWidget(widget)}
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+
+          {/* Settings Panel */}
+          <SettingsPanel
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+          />
+
+          {/* Notification Toast */}
+          <NotificationToast
+            notification={currentToast}
+            onClose={() => setCurrentToast(null)}
+          />
+
+          {/* Notification Manager */}
+          <NotificationManager
+            isOpen={isNotificationManagerOpen}
+            onClose={() => setIsNotificationManagerOpen(false)}
+          />
+
+          {/* Command Palette */}
+          <CommandPalette
+            isOpen={commandPalette.isOpen}
+            onClose={commandPalette.close}
+            setIsThemeManagerOpen={setIsThemeManagerOpen}
+          />
         </div>
+      </SidebarOverlay>
 
-        {/* Widget Grid */}
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <Droppable droppableId="widgets">
-            {(provided) => (
-              <div
-                {...provided.droppableProps}
-                ref={provided.innerRef}
-                className="flex flex-col gap-3"
-              >
-                {widgets
-                  .filter(widget => widget.enabled)
-                  .sort((a, b) => a.order - b.order)
-                  .map((widget, index) => (
-                    <Draggable key={widget.id} draggableId={widget.id} index={index}>
-                      {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          className={`
-                            sidebar-widget transition-all duration-200
-                            ${snapshot.isDragging ? 'shadow-2xl scale-105' : 'shadow-lg'}
-                          `}
-                          style={{
-                            backgroundColor: `var(--theme-surface)`,
-                            borderColor: `var(--theme-border)`,
-                            border: '1px solid',
-                            opacity: `var(--theme-opacity)`,
-                            ...provided.draggableProps.style,
-                          }}
-                        >
-                          {renderWidget(widget)}
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </DragDropContext>
-
-        {/* Settings Panel */}
-        <SettingsPanel
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
-        />
-
-        {/* Notification Toast */}
-        <NotificationToast
-          notification={currentToast}
-          onClose={() => setCurrentToast(null)}
-        />
-
-        {/* Notification Manager */}
-        <NotificationManager
-          isOpen={isNotificationManagerOpen}
-          onClose={() => setIsNotificationManagerOpen(false)}
-        />
-
-        {/* Command Palette */}
-        <CommandPalette
-          isOpen={commandPalette.isOpen}
-          onClose={commandPalette.close}
-          setIsThemeManagerOpen={setIsThemeManagerOpen}
-        />
-      </div>
-    </SidebarOverlay>
+      {/* Writer Pad */}
+      <WriterPad
+        isOpen={isWriterPadOpen}
+        onClose={() => setIsWriterPadOpen(false)}
+      />
+    </>
   );
 };
 
