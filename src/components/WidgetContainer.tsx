@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { Palette } from 'lucide-react';
 import NotesWidget from './widgets/NotesWidget';
@@ -17,6 +17,9 @@ import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { Notification } from '@/services/NotificationService';
 import CommandPalette from './CommandPalette';
 import { useCommandPalette } from '@/hooks/useCommandPalette';
+import VoiceController from './VoiceController';
+import { useVoiceCommands } from '@/hooks/useVoiceCommands';
+import { createCommandRegistry } from '@/commands/commandRegistry';
 
 interface Widget {
   id: string;
@@ -29,6 +32,7 @@ const WidgetContainer: React.FC = () => {
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [isThemeManagerOpen, setIsThemeManagerOpen] = useState(false);
   const [currentToast, setCurrentToast] = useState<Notification | null>(null);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const { currentTheme, isCustom } = useTheme();
   const { currentWorkspace, updateWorkspace } = useWorkspace();
   const commandPalette = useCommandPalette();
@@ -150,6 +154,34 @@ const WidgetContainer: React.FC = () => {
     }
   };
 
+  const commands = useMemo(() => {
+    return createCommandRegistry({
+      switchWorkspace,
+      createWorkspace,
+      workspaces,
+      setIsThemeManagerOpen,
+    });
+  }, [workspaces, switchWorkspace, createWorkspace, setIsThemeManagerOpen]);
+
+  const { findCommandByVoice } = useVoiceCommands(commands);
+
+  const handleVoiceCommand = (transcript: string) => {
+    console.log('Processing voice command:', transcript);
+    
+    const command = findCommandByVoice(transcript);
+    if (command) {
+      try {
+        command.action();
+        toast.success(`Voice command executed: ${command.label}`);
+      } catch (error) {
+        console.error('Voice command execution failed:', error);
+        toast.error('Failed to execute voice command');
+      }
+    } else {
+      toast.error(`Voice command not recognized: "${transcript}"`);
+    }
+  };
+
   return (
     <div 
       className="p-4 space-y-4 min-h-screen transition-colors duration-300"
@@ -177,6 +209,23 @@ const WidgetContainer: React.FC = () => {
         >
           <Palette className="w-5 h-5" />
         </button>
+      </div>
+
+      {/* Voice Controller */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <div 
+          className="rounded-lg border shadow-lg backdrop-blur-sm"
+          style={{
+            backgroundColor: `var(--theme-surface)`,
+            borderColor: `var(--theme-border)`,
+          }}
+        >
+          <VoiceController
+            isEnabled={isVoiceEnabled}
+            onToggleEnabled={setIsVoiceEnabled}
+            onVoiceCommand={handleVoiceCommand}
+          />
+        </div>
       </div>
 
       <DragDropContext onDragEnd={handleDragEnd}>
