@@ -31,7 +31,6 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
   });
   
   const [isDragging, setIsDragging] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const sidebarRef = useRef<HTMLDivElement>(null);
   const lastSaveTime = useRef(Date.now());
@@ -149,27 +148,6 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
     return () => window.removeEventListener('resize', handleWindowResize);
   }, [bounds, setBounds]);
 
-  const sidebarVariants = {
-    hidden: {
-      opacity: 0,
-      scale: 0.95,
-      x: bounds.x + 20,
-      transition: {
-        duration: 0.2,
-        ease: "easeInOut"
-      }
-    },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      x: bounds.x,
-      transition: {
-        duration: 0.3,
-        ease: "easeOutBack"
-      }
-    }
-  };
-
   return (
     <AnimatePresence>
       {isVisible && (
@@ -187,10 +165,25 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
             maxWidth: 600,
             maxHeight: '90vh'
           }}
-          variants={sidebarVariants}
-          initial="hidden"
-          animate="visible"
-          exit="hidden"
+          initial={{
+            opacity: 0,
+            scale: 0.95,
+            x: bounds.x + 20,
+          }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+            x: bounds.x,
+          }}
+          exit={{
+            opacity: 0,
+            scale: 0.95,
+            x: bounds.x + 20,
+          }}
+          transition={{
+            duration: 0.3,
+            ease: [0.4, 0.0, 0.2, 1]
+          }}
           role="dialog"
           aria-label="VibeMind Sidebar"
           aria-modal="true"
