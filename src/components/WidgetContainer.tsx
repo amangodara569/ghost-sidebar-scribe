@@ -27,10 +27,12 @@ import { useActivityTracker } from '@/hooks/useActivityTracker';
 import { usePluginSystem } from '@/hooks/usePluginSystem';
 import NotificationManager from './NotificationManager';
 import { useNotifications } from '@/hooks/useNotifications';
+import InsightsDashboard from './widgets/InsightsDashboard';
+import DailySummaryPopup from './DailySummaryPopup';
 
 interface Widget {
   id: string;
-  type: 'notes' | 'todo' | 'timer' | 'bookmark' | 'spotify' | 'analytics' | 'freespace' | 'notifications';
+  type: 'notes' | 'todo' | 'timer' | 'bookmark' | 'spotify' | 'analytics' | 'freespace' | 'notifications' | 'insights';
   order: number;
   enabled: boolean;
 }
@@ -151,13 +153,14 @@ const WidgetContainer: React.FC = () => {
 
   const getDefaultWidgets = (): Widget[] => [
     { id: 'notifications-1', type: 'notifications', order: 0, enabled: true },
-    { id: 'analytics-1', type: 'analytics', order: 1, enabled: true },
-    { id: 'freespace-1', type: 'freespace', order: 2, enabled: true },
-    { id: 'notes-1', type: 'notes', order: 3, enabled: true },
-    { id: 'todo-1', type: 'todo', order: 4, enabled: true },
-    { id: 'timer-1', type: 'timer', order: 5, enabled: true },
-    { id: 'bookmark-1', type: 'bookmark', order: 6, enabled: true },
-    { id: 'spotify-1', type: 'spotify', order: 7, enabled: true },
+    { id: 'insights-1', type: 'insights', order: 1, enabled: true },
+    { id: 'analytics-1', type: 'analytics', order: 2, enabled: true },
+    { id: 'freespace-1', type: 'freespace', order: 3, enabled: true },
+    { id: 'notes-1', type: 'notes', order: 4, enabled: true },
+    { id: 'todo-1', type: 'todo', order: 5, enabled: true },
+    { id: 'timer-1', type: 'timer', order: 6, enabled: true },
+    { id: 'bookmark-1', type: 'bookmark', order: 7, enabled: true },
+    { id: 'spotify-1', type: 'spotify', order: 8, enabled: true },
   ];
 
   const handleDragEnd = async (result: DropResult) => {
@@ -196,6 +199,8 @@ const WidgetContainer: React.FC = () => {
     switch (widget.type) {
       case 'notifications':
         return <NotificationCenter key={widget.id} widgetId={widget.id} {...commonProps} />;
+      case 'insights':
+        return <InsightsDashboard key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'analytics':
         return <LiveAnalyticsWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'freespace':
@@ -258,6 +263,9 @@ const WidgetContainer: React.FC = () => {
         color: 'var(--theme-text)'
       }}
     >
+      {/* Daily Summary Popup */}
+      <DailySummaryPopup />
+
       {/* Workspace Manager */}
       <div className="mb-4">
         <WorkspaceManager />
