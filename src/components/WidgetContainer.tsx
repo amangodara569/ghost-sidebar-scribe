@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { Palette } from 'lucide-react';
+import { toast } from 'sonner';
 import NotesWidget from './widgets/NotesWidget';
 import ToDoWidget from './widgets/ToDoWidget';
 import TimerWidget from './widgets/TimerWidget';
@@ -34,7 +35,13 @@ const WidgetContainer: React.FC = () => {
   const [currentToast, setCurrentToast] = useState<Notification | null>(null);
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const { currentTheme, isCustom } = useTheme();
-  const { currentWorkspace, updateWorkspace } = useWorkspace();
+  const { 
+    currentWorkspace, 
+    updateWorkspace, 
+    workspaces, 
+    switchWorkspace, 
+    createWorkspace 
+  } = useWorkspace();
   const commandPalette = useCommandPalette();
 
   useEffect(() => {
