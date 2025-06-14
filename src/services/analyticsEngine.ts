@@ -45,7 +45,11 @@ class AnalyticsEngine {
     if (stored) {
       try {
         const data = JSON.parse(stored);
-        this.events = data.events || [];
+        // Ensure timestamps are converted back to Date objects
+        this.events = (data.events || []).map((event: any) => ({
+          ...event,
+          timestamp: new Date(event.timestamp)
+        }));
         this.dailyStats = new Map(data.dailyStats || []);
       } catch (error) {
         console.warn('Failed to load analytics data:', error);
@@ -180,11 +184,26 @@ class AnalyticsEngine {
   }
 
   private calculatePeakHour(date: string): number {
-    const dayEvents = this.events.filter(e => e.timestamp.toDateString() === date);
+    // Ensure we only work with events that have valid Date objects
+    const dayEvents = this.events.filter(e => {
+      try {
+        const eventDate = e.timestamp instanceof Date ? e.timestamp : new Date(e.timestamp);
+        return eventDate.toDateString() === date;
+      } catch (error) {
+        console.warn('Invalid timestamp found:', e.timestamp);
+        return false;
+      }
+    });
+    
     const hourCounts = new Array(24).fill(0);
     
     dayEvents.forEach(event => {
-      hourCounts[event.timestamp.getHours()]++;
+      try {
+        const eventDate = event.timestamp instanceof Date ? event.timestamp : new Date(event.timestamp);
+        hourCounts[eventDate.getHours()]++;
+      } catch (error) {
+        console.warn('Failed to process event timestamp:', event.timestamp);
+      }
     });
 
     return hourCounts.indexOf(Math.max(...hourCounts));
