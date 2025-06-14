@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { trackActivity } from '@/services/analyticsEngine';
+import { analyticsEngine } from '@/services/analyticsEngine';
 
 interface ActivityData {
   notes: {
@@ -61,7 +61,7 @@ export const useActivityTracker = () => {
 
   const trackNoteActivity = useCallback((action: 'created' | 'saved', length?: number) => {
     // Track in new analytics engine
-    trackActivity('note', action, { wordCount: length });
+    analyticsEngine.trackEvent('note', action, { wordCount: length });
 
     // Keep legacy tracking for backwards compatibility
     setActivity(prev => ({
@@ -79,7 +79,7 @@ export const useActivityTracker = () => {
 
   const trackTodoActivity = useCallback((action: 'added' | 'completed' | 'deleted', isOverdue?: boolean) => {
     // Track in new analytics engine
-    trackActivity('todo', action, { isOverdue });
+    analyticsEngine.trackEvent('todo', action, { isOverdue });
 
     // Keep legacy tracking for backwards compatibility
     setActivity(prev => {
@@ -103,7 +103,7 @@ export const useActivityTracker = () => {
 
   const trackTimerActivity = useCallback((action: 'started' | 'completed', duration?: number) => {
     // Track in new analytics engine
-    trackActivity('timer', action, {}, duration);
+    analyticsEngine.trackEvent('timer', action, {}, duration);
 
     // Keep legacy tracking for backwards compatibility
     setActivity(prev => ({
@@ -123,7 +123,7 @@ export const useActivityTracker = () => {
 
   const trackSpotifyActivity = useCallback((action: 'played' | 'paused', mood?: 'focus' | 'relax' | 'energetic') => {
     // Track in new analytics engine
-    trackActivity('spotify', action, { mood });
+    analyticsEngine.trackEvent('spotify', action, { mood });
 
     // Keep legacy tracking for backwards compatibility
     setActivity(prev => ({

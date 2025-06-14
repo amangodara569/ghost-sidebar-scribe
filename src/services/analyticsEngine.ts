@@ -3,7 +3,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 export interface ActivityEvent {
   id: string;
-  type: 'note' | 'todo' | 'timer' | 'bookmark' | 'spotify' | 'voice';
+  type: 'note' | 'todo' | 'timer' | 'bookmark' | 'spotify' | 'voice' | 'system';
   action: string;
   timestamp: Date;
   metadata?: Record<string, any>;
@@ -43,18 +43,28 @@ class AnalyticsEngine {
   private loadFromStorage() {
     const stored = localStorage.getItem('vibemind-analytics');
     if (stored) {
-      const data = JSON.parse(stored);
-      this.events = data.events || [];
-      this.dailyStats = new Map(data.dailyStats || []);
+      try {
+        const data = JSON.parse(stored);
+        this.events = data.events || [];
+        this.dailyStats = new Map(data.dailyStats || []);
+      } catch (error) {
+        console.warn('Failed to load analytics data:', error);
+        this.events = [];
+        this.dailyStats = new Map();
+      }
     }
   }
 
   private saveToStorage() {
-    const data = {
-      events: this.events.slice(-1000), // Keep last 1000 events
-      dailyStats: Array.from(this.dailyStats.entries())
-    };
-    localStorage.setItem('vibemind-analytics', JSON.stringify(data));
+    try {
+      const data = {
+        events: this.events.slice(-1000), // Keep last 1000 events
+        dailyStats: Array.from(this.dailyStats.entries())
+      };
+      localStorage.setItem('vibemind-analytics', JSON.stringify(data));
+    } catch (error) {
+      console.warn('Failed to save analytics data:', error);
+    }
   }
 
   private setupEventListeners() {
@@ -141,6 +151,10 @@ class AnalyticsEngine {
         if (event.metadata?.command) {
           stats.voice.mostUsed.push(event.metadata.command);
         }
+        break;
+
+      case 'system':
+        // Handle system events if needed
         break;
     }
 
