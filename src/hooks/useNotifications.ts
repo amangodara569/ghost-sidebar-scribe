@@ -6,9 +6,11 @@ export interface Notification {
   id: string;
   title: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: 'info' | 'success' | 'warning' | 'error' | 'reminder' | 'timer' | 'ai' | 'spotify';
   timestamp: number;
+  time?: Date;
   read: boolean;
+  status?: 'pending' | 'delivered' | 'snoozed' | 'dismissed';
   priority: 'low' | 'medium' | 'high';
 }
 
@@ -17,16 +19,32 @@ interface NotificationSettings {
   maxNotifications: number;
   autoMarkRead: boolean;
   showToasts: boolean;
+  reminders: boolean;
+  timers: boolean;
+  ai: boolean;
+  spotify: boolean;
+  systemNotifications: boolean;
+  inAppToasts: boolean;
+  sounds: boolean;
 }
+
+const defaultSettings: NotificationSettings = {
+  enabled: true,
+  maxNotifications: 50,
+  autoMarkRead: true,
+  showToasts: true,
+  reminders: true,
+  timers: true,
+  ai: true,
+  spotify: false,
+  systemNotifications: true,
+  inAppToasts: true,
+  sounds: true
+};
 
 export const useNotifications = () => {
   const [notifications, setNotifications] = useLocalStorage<Notification[]>('notifications', []);
-  const [settings, setSettings] = useLocalStorage<NotificationSettings>('notification-settings', {
-    enabled: true,
-    maxNotifications: 50,
-    autoMarkRead: true,
-    showToasts: true
-  });
+  const [settings, setSettings] = useLocalStorage<NotificationSettings>('notification-settings', defaultSettings);
 
   const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
     if (!settings.enabled) return;
@@ -35,7 +53,9 @@ export const useNotifications = () => {
       ...notification,
       id: Date.now().toString(),
       timestamp: Date.now(),
-      read: false
+      time: new Date(),
+      read: false,
+      status: 'pending'
     };
 
     setNotifications(prev => {
@@ -54,14 +74,14 @@ export const useNotifications = () => {
   const markAsRead = useCallback((id: string) => {
     setNotifications(prev => 
       prev.map(notif => 
-        notif.id === id ? { ...notif, read: true } : notif
+        notif.id === id ? { ...notif, read: true, status: 'dismissed' } : notif
       )
     );
   }, [setNotifications]);
 
   const markAllAsRead = useCallback(() => {
     setNotifications(prev => 
-      prev.map(notif => ({ ...notif, read: true }))
+      prev.map(notif => ({ ...notif, read: true, status: 'dismissed' }))
     );
   }, [setNotifications]);
 
@@ -72,6 +92,38 @@ export const useNotifications = () => {
   const clearAll = useCallback(() => {
     setNotifications([]);
   }, [setNotifications]);
+
+  const snoozeNotification = useCallback((id: string, minutes: number) => {
+    setNotifications(prev => 
+      prev.map(notif => 
+        notif.id === id ? { 
+          ...notif, 
+          status: 'snoozed',
+          time: new Date(Date.now() + (minutes * 60 * 1000))
+        } : notif
+      )
+    );
+  }, [setNotifications]);
+
+  const dismissNotification = useCallback((id: string) => {
+    setNotifications(prev => 
+      prev.map(notif => 
+        notif.id === id ? { ...notif, status: 'dismissed', read: true } : notif
+      )
+    );
+  }, [setNotifications]);
+
+  const requestPermission = useCallback(async (): Promise<boolean> => {
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission();
+      return permission === 'granted';
+    }
+    return false;
+  }, []);
+
+  const updateSettings = useCallback((newSettings: Partial<NotificationSettings>) => {
+    setSettings(prev => ({ ...prev, ...newSettings }));
+  }, [setSettings]);
 
   const pendingCount = notifications.filter(n => !n.read).length;
   const unreadHighPriority = notifications.filter(n => !n.read && n.priority === 'high').length;
@@ -86,6 +138,9 @@ export const useNotifications = () => {
     clearAll,
     pendingCount,
     unreadHighPriority,
-    updateSettings: setSettings
+    snoozeNotification,
+    dismissNotification,
+    requestPermission,
+    updateSettings
   };
 };

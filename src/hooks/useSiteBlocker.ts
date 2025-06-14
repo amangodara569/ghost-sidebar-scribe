@@ -27,6 +27,8 @@ const defaultSettings: SiteBlockerSettings = {
 
 export const useSiteBlocker = () => {
   const [settings, setSettings] = useLocalStorage<SiteBlockerSettings>('site-blocker-settings', defaultSettings);
+  const [currentBlockedSite, setCurrentBlockedSite] = useState<string>('');
+  const [isBlocked, setIsBlocked] = useState<boolean>(false);
 
   const addBlockedSite = useCallback((url: string, name: string, isRegex: boolean = false) => {
     const newSite: BlockedSite = {
@@ -61,7 +63,7 @@ export const useSiteBlocker = () => {
     }));
   }, [setSettings]);
 
-  const isBlocked = useCallback((url: string): boolean => {
+  const checkIsBlocked = useCallback((url: string): boolean => {
     if (!settings.enableSiteBlocker) return false;
 
     return settings.blockedSites.some(site => {
@@ -79,11 +81,47 @@ export const useSiteBlocker = () => {
     });
   }, [settings]);
 
+  const checkCurrentSite = useCallback((focusMode: boolean = false) => {
+    if (!focusMode || !settings.enableSiteBlocker) {
+      setIsBlocked(false);
+      setCurrentBlockedSite('');
+      return;
+    }
+
+    const currentUrl = window.location.href;
+    const blocked = checkIsBlocked(currentUrl);
+    
+    if (blocked) {
+      const blockedSite = settings.blockedSites.find(site => {
+        if (site.isRegex) {
+          try {
+            const pattern = site.url.replace(/\*/g, '.*');
+            const regex = new RegExp(pattern, 'i');
+            return regex.test(currentUrl);
+          } catch {
+            return false;
+          }
+        } else {
+          return currentUrl.toLowerCase().includes(site.url.toLowerCase());
+        }
+      });
+      
+      setCurrentBlockedSite(blockedSite?.name || 'Unknown Site');
+      setIsBlocked(true);
+    } else {
+      setIsBlocked(false);
+      setCurrentBlockedSite('');
+    }
+  }, [settings, checkIsBlocked]);
+
   return {
     settings,
+    isBlocked,
+    blockedSiteName: currentBlockedSite,
     addBlockedSite,
     removeBlockedSite,
     updateSettings,
-    isBlocked
+    isBlocked: checkIsBlocked,
+    checkCurrentSite
   };
 };
