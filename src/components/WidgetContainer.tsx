@@ -68,7 +68,7 @@ const WidgetContainer: React.FC = () => {
                 </Button>
               </div>
               
-              {/* Widgets Section */}
+              {/* Productivity Tools Section */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">

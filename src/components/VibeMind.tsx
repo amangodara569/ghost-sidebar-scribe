@@ -26,7 +26,7 @@ const VibeMind: React.FC = () => {
   // Initialize voice commands
   useVoiceCommands();
   
-  // Initialize notifications with default config
+  // Initialize notifications with proper config
   useNotifications({ enabled: true });
 
   useEffect(() => {
