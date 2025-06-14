@@ -1,11 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Grid3X3, Settings, Brain, X, BarChart3 } from 'lucide-react';
+import { Grid3X3, Settings, Brain, X, BarChart3, Palette } from 'lucide-react';
 import FocusMode from './FocusMode';
 import SettingsPanel from './SettingsPanel';
+import ThemeManager from './ThemeManager';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { trackActivity } from '@/services/analyticsEngine';
 import { useVibeAnalytics } from '@/hooks/useVibeAnalytics';
@@ -14,6 +16,8 @@ import AnalyticsTab from './AnalyticsTab';
 
 const WidgetContainer: React.FC = () => {
   const [activeTab, setActiveTab] = useLocalStorage('active-tab', 'widgets');
+  const [showSettings, setShowSettings] = useState(false);
+  const [showThemeManager, setShowThemeManager] = useState(false);
 
   useEffect(() => {
     trackActivity('system', 'widget-container-mounted');
@@ -55,7 +59,29 @@ const WidgetContainer: React.FC = () => {
       case 'analytics':
         return <AnalyticsTab />;
       case 'settings':
-        return <SettingsPanel />;
+        return (
+          <div className="p-4">
+            <div className="max-w-2xl mx-auto space-y-4">
+              <div className="flex gap-4">
+                <Button
+                  onClick={() => setShowSettings(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  Open Settings
+                </Button>
+                <Button
+                  onClick={() => setShowThemeManager(true)}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Palette className="w-4 h-4" />
+                  Theme Switcher
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
       default:
         return null;
     }
@@ -76,6 +102,9 @@ const WidgetContainer: React.FC = () => {
           {renderContent()}
         </TabsContent>
       </Tabs>
+
+      <SettingsPanel isOpen={showSettings} onClose={() => setShowSettings(false)} />
+      <ThemeManager isOpen={showThemeManager} onClose={() => setShowThemeManager(false)} />
     </div>
   );
 };
