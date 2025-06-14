@@ -40,6 +40,7 @@ import FocusTrackerWidget from './widgets/FocusTrackerWidget';
 import { useFocusTracker } from '@/hooks/useFocusTracker';
 import WriterPad from './WriterPad';
 import WebsiteShortcutsWidget from './widgets/WebsiteShortcutsWidget';
+import FocusMode from './FocusMode';
 
 interface Widget {
   id: string;
@@ -171,6 +172,23 @@ const WidgetContainer: React.FC = () => {
 
     return () => unregisterTask('analytics-polling');
   }, [registerTask, unregisterTask, logCustomMetric]);
+
+  // Listen for focus mode timer start events
+  useEffect(() => {
+    const handleFocusTimerStart = (event: CustomEvent<number>) => {
+      // Find and trigger timer widget
+      const timerWidget = document.querySelector('[data-widget="timer"]');
+      if (timerWidget) {
+        // Dispatch event to timer widget to start with specified duration
+        window.dispatchEvent(new CustomEvent('timer:start', { 
+          detail: { duration: event.detail, source: 'focus-mode' }
+        }));
+      }
+    };
+
+    window.addEventListener('focus:start-timer', handleFocusTimerStart as EventListener);
+    return () => window.removeEventListener('focus:start-timer', handleFocusTimerStart as EventListener);
+  }, []);
 
   const loadWidgets = async () => {
     if (currentWorkspace) {
@@ -329,6 +347,15 @@ const WidgetContainer: React.FC = () => {
             border: '1px solid'
           }}>
             <WorkspaceManager />
+          </div>
+
+          {/* Focus Mode */}
+          <div className="sidebar-widget" style={{ 
+            backgroundColor: 'var(--theme-surface)',
+            borderColor: 'var(--theme-border)',
+            border: '1px solid'
+          }}>
+            <FocusMode />
           </div>
 
           {/* VibeMind AI Assistant */}
