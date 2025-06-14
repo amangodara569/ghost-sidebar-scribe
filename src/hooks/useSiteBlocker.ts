@@ -121,7 +121,7 @@ export const useSiteBlocker = () => {
     addBlockedSite,
     removeBlockedSite,
     updateSettings,
-    isBlocked: checkIsBlocked,
+    checkIsBlocked,
     checkCurrentSite
   };
 };
