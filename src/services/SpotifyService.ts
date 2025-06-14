@@ -9,6 +9,16 @@ interface SpotifyTrack {
   isPlaying: boolean;
 }
 
+interface SpotifyDevice {
+  id: string;
+  name: string;
+  type: string;
+  is_active: boolean;
+  is_private_session: boolean;
+  is_restricted: boolean;
+  volume_percent: number;
+}
+
 interface SpotifyAuthConfig {
   clientId: string;
   redirectUri: string;
@@ -21,7 +31,8 @@ class SpotifyService {
   private scopes = [
     'user-read-playback-state',
     'user-modify-playback-state',
-    'user-read-currently-playing'
+    'user-read-currently-playing',
+    'streaming'
   ];
 
   private accessToken: string | null = null;
@@ -240,6 +251,10 @@ class SpotifyService {
         return null;
       }
 
+      if (response.status === 404) {
+        throw new Error('No active device found. Please open Spotify and start playing music.');
+      }
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         throw new Error(errorData?.error?.message || `HTTP ${response.status}`);
@@ -251,6 +266,16 @@ class SpotifyService {
         throw new Error('Network error - please check your connection');
       }
       throw error;
+    }
+  }
+
+  async getDevices(): Promise<SpotifyDevice[]> {
+    try {
+      const data = await this.makeApiCall('/me/player/devices');
+      return data?.devices || [];
+    } catch (error) {
+      console.error('Get devices error:', error);
+      return [];
     }
   }
 
@@ -313,6 +338,44 @@ class SpotifyService {
     }
   }
 
+  async setVolume(volume: number): Promise<void> {
+    try {
+      const clampedVolume = Math.max(0, Math.min(100, volume));
+      await this.makeApiCall(`/me/player/volume?volume_percent=${clampedVolume}`, { 
+        method: 'PUT' 
+      });
+    } catch (error) {
+      console.error('Set volume error:', error);
+      throw error;
+    }
+  }
+
+  async seek(positionMs: number): Promise<void> {
+    try {
+      await this.makeApiCall(`/me/player/seek?position_ms=${positionMs}`, { 
+        method: 'PUT' 
+      });
+    } catch (error) {
+      console.error('Seek error:', error);
+      throw error;
+    }
+  }
+
+  async transferPlayback(deviceId: string): Promise<void> {
+    try {
+      await this.makeApiCall('/me/player', {
+        method: 'PUT',
+        body: JSON.stringify({
+          device_ids: [deviceId],
+          play: true
+        })
+      });
+    } catch (error) {
+      console.error('Transfer playback error:', error);
+      throw error;
+    }
+  }
+
   logout() {
     this.clearTokens();
     this.clientId = '';
@@ -321,4 +384,4 @@ class SpotifyService {
 }
 
 export const spotifyService = new SpotifyService();
-export type { SpotifyTrack };
+export type { SpotifyTrack, SpotifyDevice };

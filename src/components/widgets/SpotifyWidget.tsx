@@ -3,9 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Play, Pause, SkipBack, SkipForward, Settings, LogOut } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Play, Pause, SkipBack, SkipForward, Settings, LogOut, Volume2, Smartphone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { spotifyService, SpotifyTrack } from '@/services/SpotifyService';
+import { spotifyService, SpotifyTrack, SpotifyDevice } from '@/services/SpotifyService';
 
 interface SpotifyWidgetProps {
   widgetId: string;
@@ -14,10 +16,12 @@ interface SpotifyWidgetProps {
 const SpotifyWidget: React.FC<SpotifyWidgetProps> = ({ widgetId }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentTrack, setCurrentTrack] = useState<SpotifyTrack | null>(null);
+  const [devices, setDevices] = useState<SpotifyDevice[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [clientId, setClientId] = useState('');
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [volume, setVolume] = useState(50);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -43,9 +47,13 @@ const SpotifyWidget: React.FC<SpotifyWidgetProps> = ({ widgetId }) => {
     if (isAuthenticated) {
       // Initial fetch
       fetchCurrentTrack();
+      fetchDevices();
       
       // Update every 10 seconds
-      intervalId = setInterval(fetchCurrentTrack, 10000);
+      intervalId = setInterval(() => {
+        fetchCurrentTrack();
+        fetchDevices();
+      }, 10000);
     }
 
     return () => {
@@ -66,6 +74,7 @@ const SpotifyWidget: React.FC<SpotifyWidgetProps> = ({ widgetId }) => {
           description: "Successfully connected to Spotify",
         });
         fetchCurrentTrack();
+        fetchDevices();
       } else {
         toast({
           title: "Connection Failed",
@@ -105,6 +114,21 @@ const SpotifyWidget: React.FC<SpotifyWidgetProps> = ({ widgetId }) => {
     }
   };
 
+  const fetchDevices = async () => {
+    try {
+      const deviceList = await spotifyService.getDevices();
+      setDevices(deviceList);
+      
+      // Get volume from active device
+      const activeDevice = deviceList.find(d => d.is_active);
+      if (activeDevice) {
+        setVolume(activeDevice.volume_percent);
+      }
+    } catch (error) {
+      console.error('Failed to fetch devices:', error);
+    }
+  };
+
   const handleConnect = () => {
     if (!clientId.trim()) {
       toast({
@@ -132,12 +156,12 @@ const SpotifyWidget: React.FC<SpotifyWidgetProps> = ({ widgetId }) => {
   const handlePlay = async () => {
     try {
       await spotifyService.play();
-      fetchCurrentTrack();
+      setTimeout(fetchCurrentTrack, 500);
     } catch (error) {
       console.error('Play error:', error);
       toast({
         title: "Playback Error",
-        description: "Make sure Spotify is open with an active device",
+        description: error instanceof Error ? error.message : "Make sure Spotify is open with an active device",
         variant: "destructive",
       });
     }
@@ -146,7 +170,7 @@ const SpotifyWidget: React.FC<SpotifyWidgetProps> = ({ widgetId }) => {
   const handlePause = async () => {
     try {
       await spotifyService.pause();
-      fetchCurrentTrack();
+      setTimeout(fetchCurrentTrack, 500);
     } catch (error) {
       console.error('Pause error:', error);
     }
@@ -155,7 +179,6 @@ const SpotifyWidget: React.FC<SpotifyWidgetProps> = ({ widgetId }) => {
   const handleNext = async () => {
     try {
       await spotifyService.next();
-      // Wait a bit before fetching to ensure track has changed
       setTimeout(fetchCurrentTrack, 1000);
     } catch (error) {
       console.error('Next error:', error);
@@ -171,10 +194,56 @@ const SpotifyWidget: React.FC<SpotifyWidgetProps> = ({ widgetId }) => {
     }
   };
 
+  const handleVolumeChange = async (newVolume: number[]) => {
+    const volumeValue = newVolume[0];
+    setVolume(volumeValue);
+    
+    try {
+      await spotifyService.setVolume(volumeValue);
+    } catch (error) {
+      console.error('Volume change error:', error);
+    }
+  };
+
+  const handleSeek = async (newProgress: number[]) => {
+    if (!currentTrack) return;
+    
+    const progressMs = (newProgress[0] / 100) * currentTrack.duration;
+    
+    try {
+      await spotifyService.seek(progressMs);
+      setTimeout(fetchCurrentTrack, 500);
+    } catch (error) {
+      console.error('Seek error:', error);
+    }
+  };
+
+  const handleDeviceChange = async (deviceId: string) => {
+    try {
+      await spotifyService.transferPlayback(deviceId);
+      setTimeout(() => {
+        fetchCurrentTrack();
+        fetchDevices();
+      }, 1000);
+      toast({
+        title: "Device Changed",
+        description: "Playback transferred successfully",
+      });
+    } catch (error) {
+      console.error('Device transfer error:', error);
+      toast({
+        title: "Transfer Failed",
+        description: "Failed to transfer playback to device",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleLogout = () => {
     spotifyService.logout();
     setIsAuthenticated(false);
     setCurrentTrack(null);
+    setDevices([]);
     toast({
       title: "Spotify Disconnected",
       description: "Successfully disconnected from Spotify",
@@ -249,19 +318,37 @@ const SpotifyWidget: React.FC<SpotifyWidgetProps> = ({ widgetId }) => {
     );
   }
 
+  const activeDevice = devices.find(d => d.is_active);
+
   return (
     <Card className="sidebar-widget">
       <CardHeader className="sidebar-widget-header">
         <CardTitle className="sidebar-widget-title">Spotify</CardTitle>
-        <Button
-          onClick={handleLogout}
-          size="sm"
-          variant="ghost"
-          className="sidebar-button h-6 w-6 p-0"
-          title="Disconnect"
-        >
-          <LogOut className="w-4 h-4" />
-        </Button>
+        <div className="flex gap-1">
+          {devices.length > 1 && (
+            <Select onValueChange={handleDeviceChange} value={activeDevice?.id}>
+              <SelectTrigger className="sidebar-button h-6 w-6 p-0">
+                <Smartphone className="w-3 h-3" />
+              </SelectTrigger>
+              <SelectContent>
+                {devices.map((device) => (
+                  <SelectItem key={device.id} value={device.id}>
+                    {device.name} {device.is_active ? '(Active)' : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button
+            onClick={handleLogout}
+            size="sm"
+            variant="ghost"
+            className="sidebar-button h-6 w-6 p-0"
+            title="Disconnect"
+          >
+            <LogOut className="w-4 h-4" />
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="sidebar-widget-content space-y-4">
         {currentTrack ? (
@@ -292,14 +379,13 @@ const SpotifyWidget: React.FC<SpotifyWidgetProps> = ({ widgetId }) => {
 
             {/* Progress Bar */}
             <div className="space-y-2">
-              <div className="w-full bg-gray-700 rounded-full h-1">
-                <div
-                  className="bg-green-500 h-1 rounded-full transition-all duration-1000"
-                  style={{
-                    width: `${Math.min((currentTrack.progress / currentTrack.duration) * 100, 100)}%`,
-                  }}
-                />
-              </div>
+              <Slider
+                value={[Math.min((currentTrack.progress / currentTrack.duration) * 100, 100)]}
+                onValueChange={handleSeek}
+                max={100}
+                step={1}
+                className="w-full"
+              />
               <div className="flex justify-between text-xs sidebar-text-secondary">
                 <span>{formatTime(currentTrack.progress)}</span>
                 <span>{formatTime(currentTrack.duration)}</span>
@@ -341,11 +427,33 @@ const SpotifyWidget: React.FC<SpotifyWidgetProps> = ({ widgetId }) => {
                 <SkipForward className="w-4 h-4" />
               </Button>
             </div>
+
+            {/* Volume Control */}
+            <div className="flex items-center space-x-2">
+              <Volume2 className="w-4 h-4 sidebar-text-secondary" />
+              <Slider
+                value={[volume]}
+                onValueChange={handleVolumeChange}
+                max={100}
+                step={1}
+                className="flex-1"
+              />
+              <span className="sidebar-text-secondary text-xs w-8">{volume}%</span>
+            </div>
           </>
         ) : (
           <div className="text-center py-6">
-            <p className="sidebar-text-secondary">No track currently playing</p>
-            <p className="sidebar-text-secondary text-sm mt-1">Start playing music in Spotify</p>
+            {devices.length === 0 ? (
+              <>
+                <p className="sidebar-text-secondary">No devices found</p>
+                <p className="sidebar-text-secondary text-sm mt-1">Open Spotify app to see devices</p>
+              </>
+            ) : (
+              <>
+                <p className="sidebar-text-secondary">No track currently playing</p>
+                <p className="sidebar-text-secondary text-sm mt-1">Start playing music in Spotify</p>
+              </>
+            )}
           </div>
         )}
       </CardContent>
