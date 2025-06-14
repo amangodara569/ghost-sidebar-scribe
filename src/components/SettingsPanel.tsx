@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Settings, Palette, Timer, Volume2, Cloud, StickyNote, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Settings, Palette, Timer, Volume2, Cloud, StickyNote, Shield, Plus, Trash2 } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useSiteBlocker } from '@/hooks/useSiteBlocker';
 import { toast } from 'sonner';
 
 interface SettingsData {
@@ -104,6 +105,11 @@ interface SettingsPanelProps {
 
 const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
   const [settings, setSettings] = useLocalStorage<SettingsData>('vibemind-settings', defaultSettings);
+  const [newSiteName, setNewSiteName] = useState('');
+  const [newSiteUrl, setNewSiteUrl] = useState('');
+  const [newSiteIsRegex, setNewSiteIsRegex] = useState(true);
+  
+  const siteBlocker = useSiteBlocker();
 
   const updateSetting = (category: keyof SettingsData, key: string, value: any) => {
     setSettings(prev => ({
@@ -138,6 +144,18 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
       toast.success('All data cleared');
       window.location.reload();
     }
+  };
+
+  const addNewBlockedSite = () => {
+    if (!newSiteName.trim() || !newSiteUrl.trim()) {
+      toast.error('Please enter both name and URL');
+      return;
+    }
+
+    siteBlocker.addBlockedSite(newSiteUrl.trim(), newSiteName.trim(), newSiteIsRegex);
+    setNewSiteName('');
+    setNewSiteUrl('');
+    toast.success('Blocked site added');
   };
 
   return (
@@ -476,6 +494,91 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
                   <Button onClick={clearAllData} variant="destructive" className="w-full">
                     Clear All Data
                   </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Site Blocker Settings */}
+            <AccordionItem value="siteblocker">
+              <AccordionTrigger className="text-white hover:text-gray-300">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  Site Blocker
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-4 pt-4">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="enable-blocker" className="text-gray-300">Enable Site Blocker</Label>
+                  <Switch
+                    id="enable-blocker"
+                    checked={siteBlocker.settings.enableSiteBlocker}
+                    onCheckedChange={(checked) => siteBlocker.updateSettings({ enableSiteBlocker: checked })}
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-gray-300">Blocked Sites</Label>
+                  
+                  {/* Add New Site */}
+                  <div className="space-y-2 p-3 border rounded" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Site name (e.g., YouTube)"
+                        value={newSiteName}
+                        onChange={(e) => setNewSiteName(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Input
+                        placeholder="URL pattern (e.g., *.youtube.com)"
+                        value={newSiteUrl}
+                        onChange={(e) => setNewSiteUrl(e.target.value)}
+                        className="flex-1"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={newSiteIsRegex}
+                          onCheckedChange={setNewSiteIsRegex}
+                        />
+                        <Label className="text-xs text-gray-400">Use wildcard (*)</Label>
+                      </div>
+                      <Button size="sm" onClick={addNewBlockedSite}>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Blocked Sites List */}
+                  <div className="space-y-2">
+                    {siteBlocker.settings.blockedSites.map((site) => (
+                      <div
+                        key={site.id}
+                        className="flex items-center justify-between p-2 border rounded"
+                        style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}
+                      >
+                        <div>
+                          <div className="text-sm text-white">{site.name}</div>
+                          <div className="text-xs text-gray-400">
+                            {site.url} {site.isRegex && '(wildcard)'}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => siteBlocker.removeBlockedSite(site.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="text-xs text-gray-400 p-2 border-l-2 border-blue-500">
+                    💡 Use wildcards like *.youtube.com to block all subdomains. 
+                    Site blocking only works when Focus Mode is active.
+                  </div>
                 </div>
               </AccordionContent>
             </AccordionItem>

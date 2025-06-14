@@ -1,13 +1,14 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Timer, Volume2, VolumeX, Brain, Zap } from 'lucide-react';
+import { Timer, Volume2, VolumeX, Brain, Zap, Shield } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useSiteBlocker } from '@/hooks/useSiteBlocker';
 import { toast } from 'sonner';
+import SiteBlockerOverlay from './SiteBlockerOverlay';
 
 interface FocusSession {
   startTime: string;
@@ -39,6 +40,9 @@ const FocusMode: React.FC = () => {
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const startTimeRef = useRef<Date | null>(null);
+
+  // Site blocker integration
+  const siteBlocker = useSiteBlocker();
 
   // Ambient sound URLs (using royalty-free sounds)
   const ambientSounds = {
@@ -78,6 +82,28 @@ const FocusMode: React.FC = () => {
     };
   }, [settings.preferredAmbientType, settings.ambientVolume]);
 
+  // Check for blocked sites when focus mode changes
+  useEffect(() => {
+    siteBlocker.checkCurrentSite(isActive);
+  }, [isActive, siteBlocker.settings.enableSiteBlocker]);
+
+  // Check for blocked sites on URL changes
+  useEffect(() => {
+    const checkSiteBlocking = () => {
+      siteBlocker.checkCurrentSite(isActive);
+    };
+
+    // Listen for navigation events
+    window.addEventListener('popstate', checkSiteBlocking);
+    
+    // Check immediately
+    checkSiteBlocking();
+
+    return () => {
+      window.removeEventListener('popstate', checkSiteBlocking);
+    };
+  }, [isActive, siteBlocker]);
+
   const toggleFocusMode = async () => {
     if (!isActive) {
       // Start focus mode
@@ -111,6 +137,9 @@ const FocusMode: React.FC = () => {
       toast.success('Focus mode activated', {
         description: 'Press Ctrl+Shift+F to exit'
       });
+      
+      // Check for blocked sites immediately after activation
+      setTimeout(() => siteBlocker.checkCurrentSite(true), 100);
       
     } else {
       // End focus mode
@@ -172,6 +201,17 @@ const FocusMode: React.FC = () => {
 
   return (
     <>
+      {/* Site Blocker Overlay */}
+      {siteBlocker.isBlocked && isActive && (
+        <SiteBlockerOverlay
+          siteName={siteBlocker.blockedSiteName}
+          onDisableFocusMode={() => {
+            setIsActive(false);
+            toast.success('Focus Mode disabled');
+          }}
+        />
+      )}
+
       {/* Background Overlay */}
       {isActive && (
         <div 
@@ -214,6 +254,24 @@ const FocusMode: React.FC = () => {
               onCheckedChange={toggleFocusMode}
             />
           </div>
+
+          {/* Site Blocker Status */}
+          {isActive && siteBlocker.settings.enableSiteBlocker && (
+            <div className="flex items-center justify-between p-2 rounded border" style={{
+              backgroundColor: 'var(--theme-background)',
+              borderColor: 'var(--theme-border)'
+            }}>
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-blue-500" />
+                <span className="text-xs" style={{ color: 'var(--theme-text)' }}>
+                  Site Blocker Active
+                </span>
+              </div>
+              <div className="text-xs" style={{ color: 'var(--theme-text-secondary)' }}>
+                {siteBlocker.settings.blockedSites.length} sites blocked
+              </div>
+            </div>
+          )}
 
           {/* Focus Stats */}
           {totalFocusTimeToday > 0 && (
