@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Minimize, Maximize2, GripHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -378,9 +379,14 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
     }
   }, [bounds.x, bounds.y, isDragging]);
 
-  // Minimize/restore functions
+  // Minimize/restore functions with debouncing
   const handleMinimize = () => setIsMinimized(true);
-  const handleRestore = () => setIsMinimized(false);
+  const handleRestore = useCallback(() => {
+    // Debounce to prevent rapid toggle
+    setTimeout(() => {
+      setIsMinimized(false);
+    }, 100);
+  }, []);
 
   // Minimized tab component
   const MinimizedTab = () => (
