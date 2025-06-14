@@ -34,6 +34,11 @@ const RESIZE_HANDLES: ResizeHandle[] = [
   { direction: 'nw', cursor: 'nw-resize' },
 ];
 
+// Smooth easing constants
+const DRAG_EASING = 0.15;
+const EDGE_SNAP_THRESHOLD = 20;
+const EDGE_SNAP_DISTANCE = 10;
+
 const SidebarOverlay: React.FC<SidebarOverlayProps> = ({ 
   children, 
   isVisible, 
@@ -49,27 +54,58 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
   const [isMinimized, setIsMinimized] = useLocalStorage<boolean>('sidebar-minimized', false);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [resizeStart, setResizeStart] = useState({ bounds: bounds, mouse: { x: 0, y: 0 } });
   
-  // Smooth dragging state
+  // Enhanced drag state management
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [currentPos, setCurrentPos] = useState({ x: bounds.x, y: bounds.y });
   const [targetPos, setTargetPos] = useState({ x: bounds.x, y: bounds.y });
+  const [resizeStart, setResizeStart] = useState({ bounds: bounds, mouse: { x: 0, y: 0 } });
+  
+  // Animation and throttling refs
   const animationFrameRef = useRef<number>();
+  const lastMouseMoveRef = useRef<number>(0);
+  const throttleDelay = 16; // ~60fps
   
   const sidebarRef = useRef<HTMLDivElement>(null);
   const minimizedTabRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Smooth animation loop for dragging
+  // Enhanced smooth animation loop with edge snapping
   const animateDrag = useCallback(() => {
     setCurrentPos(prev => {
-      const easing = 0.15; // Smooth easing factor
-      const newX = prev.x + (targetPos.x - prev.x) * easing;
-      const newY = prev.y + (targetPos.y - prev.y) * easing;
+      let newX = prev.x + (targetPos.x - prev.x) * DRAG_EASING;
+      let newY = prev.y + (targetPos.y - prev.y) * DRAG_EASING;
+      
+      // Edge snapping logic
+      if (isDragging) {
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        
+        // Left edge snap
+        if (newX < EDGE_SNAP_THRESHOLD) {
+          newX = newX < EDGE_SNAP_DISTANCE ? EDGE_SNAP_DISTANCE : newX;
+        }
+        
+        // Right edge snap
+        if (newX + bounds.width > screenWidth - EDGE_SNAP_THRESHOLD) {
+          const snapX = screenWidth - bounds.width - EDGE_SNAP_DISTANCE;
+          newX = newX > snapX ? snapX : newX;
+        }
+        
+        // Top edge snap
+        if (newY < EDGE_SNAP_THRESHOLD) {
+          newY = newY < EDGE_SNAP_DISTANCE ? EDGE_SNAP_DISTANCE : newY;
+        }
+        
+        // Bottom edge snap
+        if (newY + bounds.height > screenHeight - EDGE_SNAP_THRESHOLD) {
+          const snapY = screenHeight - bounds.height - EDGE_SNAP_DISTANCE;
+          newY = newY > snapY ? snapY : newY;
+        }
+      }
       
       // Stop animation when close enough to target
-      const threshold = 0.1;
+      const threshold = 0.5;
       if (Math.abs(targetPos.x - newX) < threshold && Math.abs(targetPos.y - newY) < threshold) {
         return { x: targetPos.x, y: targetPos.y };
       }
@@ -77,19 +113,15 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
       return { x: newX, y: newY };
     });
     
-    if (isDragging) {
+    if (isDragging || Math.abs(targetPos.x - currentPos.x) > 0.5 || Math.abs(targetPos.y - currentPos.y) > 0.5) {
       animationFrameRef.current = requestAnimationFrame(animateDrag);
     }
-  }, [isDragging, targetPos]);
+  }, [isDragging, targetPos, bounds.width, bounds.height, currentPos.x, currentPos.y]);
 
-  // Start animation loop when dragging starts
+  // Start/stop animation loop
   useEffect(() => {
-    if (isDragging) {
+    if (isDragging || Math.abs(targetPos.x - currentPos.x) > 0.5 || Math.abs(targetPos.y - currentPos.y) > 0.5) {
       animationFrameRef.current = requestAnimationFrame(animateDrag);
-    } else {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
     }
     
     return () => {
@@ -128,7 +160,6 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
         event.stopPropagation();
         
         if (isVisible) {
-          // Hide sidebar and show toast
           onToggleVisibility();
           toast({
             title: "Sidebar Hidden",
@@ -136,9 +167,7 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
             duration: 3000,
           });
         } else {
-          // Show sidebar
           onToggleVisibility();
-          // If minimized, restore it
           if (isMinimized) {
             setIsMinimized(false);
           }
@@ -162,12 +191,11 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
       }
     };
 
-    // Add event listener to document for global capture
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [onToggleVisibility, isVisible, isMinimized, toast]);
 
-  // Drag functionality
+  // Enhanced drag functionality with proper offset recording
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (isMinimized) return;
     
@@ -179,6 +207,8 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
       e.stopPropagation();
       
       setIsDragging(true);
+      
+      // Record proper offset from sidebar's current position
       const rect = sidebarRef.current?.getBoundingClientRect();
       if (rect) {
         setDragOffset({
@@ -186,8 +216,16 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
           y: e.clientY - rect.top
         });
       }
+      
+      // Prevent text selection during drag
       document.body.style.cursor = 'grabbing';
       document.body.style.userSelect = 'none';
+      document.body.style.pointerEvents = 'none';
+      
+      // Re-enable pointer events for the sidebar
+      if (sidebarRef.current) {
+        sidebarRef.current.style.pointerEvents = 'auto';
+      }
     }
   }, [isMinimized]);
 
@@ -206,17 +244,35 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
     
     const handle = RESIZE_HANDLES.find(h => h.direction === direction);
     document.body.style.cursor = handle?.cursor || 'default';
+    document.body.style.userSelect = 'none';
   }, [bounds, isMinimized]);
 
-  // Mouse move handler
+  // Enhanced mouse move handler with throttling
   const handleMouseMove = useCallback((e: MouseEvent) => {
+    const now = Date.now();
+    
+    // Throttle mouse move events
+    if (now - lastMouseMoveRef.current < throttleDelay) {
+      return;
+    }
+    lastMouseMoveRef.current = now;
+    
     if (isDragging) {
       e.preventDefault();
-      const newX = e.clientX - dragOffset.x;
-      const newY = e.clientY - dragOffset.y;
       
-      const constrainedBounds = constrainBounds({ ...bounds, x: newX, y: newY });
+      // Calculate new target position using recorded offset
+      const newTargetX = e.clientX - dragOffset.x;
+      const newTargetY = e.clientY - dragOffset.y;
+      
+      // Apply constraints and set target position
+      const constrainedBounds = constrainBounds({ 
+        ...bounds, 
+        x: newTargetX, 
+        y: newTargetY 
+      });
+      
       setTargetPos({ x: constrainedBounds.x, y: constrainedBounds.y });
+      
     } else if (isResizing) {
       e.preventDefault();
       const deltaX = e.clientX - resizeStart.mouse.x;
@@ -224,6 +280,7 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
       
       let newBounds = { ...resizeStart.bounds };
       
+      // ... keep existing code (resize direction logic)
       switch (isResizing) {
         case 'n':
           newBounds.y += deltaY;
@@ -265,14 +322,22 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
     }
   }, [isDragging, isResizing, dragOffset, bounds, resizeStart, constrainBounds, setBounds]);
 
+  // Enhanced mouse up handler
   const handleMouseUp = useCallback(() => {
     if (isDragging || isResizing) {
       setIsDragging(false);
       setIsResizing(null);
+      
+      // Restore normal cursor and selection
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      document.body.style.pointerEvents = '';
       
-      // Snap final position to bounds
+      if (sidebarRef.current) {
+        sidebarRef.current.style.pointerEvents = '';
+      }
+      
+      // Snap final position to target
       if (isDragging) {
         setCurrentPos({ x: targetPos.x, y: targetPos.y });
       }
@@ -282,7 +347,7 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
   // Mouse event listeners
   useEffect(() => {
     if (isDragging || isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mousemove', handleMouseMove, { passive: false });
       document.addEventListener('mouseup', handleMouseUp);
       
       return () => {
