@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Tab } from '@headlessui/react';
 import MDEditor from '@uiw/react-md-editor';
@@ -303,7 +302,7 @@ const FreeSpaceWidget: React.FC<{ widgetId: string }> = ({ widgetId }) => {
                   onChange={handleContentChange}
                   preview={previewMode ? 'preview' : 'edit'}
                   hideToolbar={false}
-                  visibleDragBar={false}
+                  visibleDragbar={false}
                   textareaProps={{
                     placeholder: 'Start writing your thoughts...',
                     style: {

@@ -1,65 +1,32 @@
+import { FreeSpace } from "@/components/widgets/FreeSpaceWidget";
 
-export interface IElectronAPI {
-  // Widget management
-  invoke: (channel: string, ...args: any[]) => Promise<any>;
-  on: (channel: string, callback: (...args: any[]) => void) => void;
-  removeListener: (channel: string, callback: (...args: any[]) => void) => void;
-  
-  // Notes
-  'notes:getAll': () => Promise<any[]>;
-  'notes:save': (note: any) => Promise<void>;
-  'notes:delete': (id: string) => Promise<void>;
-  
-  // Todos
-  'todos:getAll': () => Promise<any[]>;
-  'todos:add': (todo: any) => Promise<void>;
-  'todos:update': (id: string, updates: any) => Promise<void>;
-  'todos:delete': (id: string) => Promise<void>;
-  
-  // Timer
-  'timer:getState': () => Promise<any>;
-  'timer:start': (config: any) => Promise<void>;
-  'timer:pause': () => Promise<void>;
-  'timer:reset': () => Promise<void>;
-  
-  // Bookmarks
-  'bookmarks:getAll': () => Promise<any[]>;
-  'bookmarks:add': (bookmark: any) => Promise<void>;
-  'bookmarks:update': (id: string, updates: any) => Promise<void>;
-  'bookmarks:delete': (id: string) => Promise<void>;
-  'browser:getActiveURL': () => Promise<string>;
-  'browser:openExternal': (url: string) => Promise<void>;
-  
-  // Spotify
-  'spotify:checkConnection': () => Promise<boolean>;
-  'spotify:connect': () => Promise<boolean>;
-  'spotify:getCurrentTrack': () => Promise<any>;
-  'spotify:play': () => Promise<void>;
-  'spotify:pause': () => Promise<void>;
-  'spotify:next': () => Promise<void>;
-  'spotify:prev': () => Promise<void>;
-  'spotify:setVolume': (volume: number) => Promise<void>;
-  
-  // Focus Tracking & Analytics
-  'focus:getStatsToday': () => Promise<any>;
-  'focus:getCurrentSession': () => Promise<any>;
-  'focus:getSessionHistory': (days: number) => Promise<any[]>;
-  'recommendations:getLatest': () => Promise<any[]>;
-  'recommendations:dismiss': (id: string) => Promise<void>;
-  
-  // FreeSpace Writing
-  'freespace:getAll': () => Promise<any[]>;
-  'freespace:getById': (id: string) => Promise<any>;
-  'freespace:save': (space: any) => Promise<void>;
-  'freespace:delete': (id: string) => Promise<void>;
-  
-  // Widgets
-  'widgets:getAll': () => Promise<any[]>;
-  'widgets:updateOrder': (widgets: any[]) => Promise<void>;
+interface ElectronAPI {
+  setTitle: (title: string) => Promise<void>
+  openFile: () => Promise<string>
+  saveFile: (filename: string, content: string) => Promise<void>
+  sendMessage: (message: string) => void
+  receiveMessage: (callback: (message: string) => void) => void
+  removeAllListeners: () => void
+  'widgets:getAll': () => Promise<any[]>
+  'widgets:updateOrder': (widgets: any[]) => Promise<void>
+  'freespace:getAll': () => Promise<FreeSpace[]>
+  'freespace:save': (space: FreeSpace) => Promise<void>
+  'freespace:delete': (id: string) => Promise<void>
+  // Theme API
+  'theme:get': () => Promise<{
+    presetId?: string;
+    customTheme?: any;
+    isCustom: boolean;
+  } | null>;
+  'theme:save': (themeData: {
+    presetId?: string;
+    customTheme?: any;
+    isCustom: boolean;
+  }) => Promise<void>;
 }
 
 declare global {
   interface Window {
-    electronAPI: IElectronAPI;
+    electronAPI: ElectronAPI
   }
 }

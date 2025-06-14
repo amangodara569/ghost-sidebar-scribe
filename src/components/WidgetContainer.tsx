@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { Palette } from 'lucide-react';
 import NotesWidget from './widgets/NotesWidget';
 import ToDoWidget from './widgets/ToDoWidget';
 import TimerWidget from './widgets/TimerWidget';
@@ -8,6 +9,8 @@ import BookmarkWidget from './widgets/BookmarkWidget';
 import SpotifyWidget from './widgets/SpotifyWidget';
 import LiveAnalyticsWidget from './widgets/LiveAnalyticsWidget';
 import FreeSpaceWidget from './widgets/FreeSpaceWidget';
+import ThemeManager from './ThemeManager';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface Widget {
   id: string;
@@ -18,10 +21,25 @@ interface Widget {
 
 const WidgetContainer: React.FC = () => {
   const [widgets, setWidgets] = useState<Widget[]>([]);
+  const [isThemeManagerOpen, setIsThemeManagerOpen] = useState(false);
+  const { currentTheme, isCustom } = useTheme();
 
   useEffect(() => {
     // Load widget configuration from storage
     loadWidgets();
+  }, []);
+
+  // Add keyboard shortcut for theme toggle
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'T') {
+        event.preventDefault();
+        setIsThemeManagerOpen(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const loadWidgets = async () => {
@@ -96,7 +114,29 @@ const WidgetContainer: React.FC = () => {
   };
 
   return (
-    <div className="p-4 space-y-4">
+    <div 
+      className="p-4 space-y-4 min-h-screen transition-colors duration-300"
+      style={{ 
+        backgroundColor: 'var(--theme-background)',
+        color: 'var(--theme-text)'
+      }}
+    >
+      {/* Theme Toggle Button */}
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => setIsThemeManagerOpen(true)}
+          className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
+          style={{ 
+            backgroundColor: 'var(--theme-surface)',
+            color: 'var(--theme-accent)',
+            border: `1px solid var(--theme-border)`
+          }}
+          title="Theme Manager (Ctrl+Shift+T)"
+        >
+          <Palette className="w-5 h-5" />
+        </button>
+      </div>
+
       <DragDropContext onDragEnd={handleDragEnd}>
         <Droppable droppableId="widgets">
           {(provided) => (
@@ -116,10 +156,14 @@ const WidgetContainer: React.FC = () => {
                         {...provided.draggableProps}
                         {...provided.dragHandleProps}
                         className={`
-                          bg-gray-800/90 rounded-lg border border-gray-700 
-                          transition-all duration-200 backdrop-blur-sm
+                          rounded-lg border transition-all duration-200 backdrop-blur-sm
                           ${snapshot.isDragging ? 'shadow-2xl scale-105' : 'shadow-lg'}
                         `}
+                        style={{
+                          backgroundColor: `var(--theme-surface)`,
+                          borderColor: `var(--theme-border)`,
+                          opacity: `var(--theme-opacity)`,
+                        }}
                       >
                         {renderWidget(widget)}
                       </div>
@@ -131,6 +175,11 @@ const WidgetContainer: React.FC = () => {
           )}
         </Droppable>
       </DragDropContext>
+
+      <ThemeManager 
+        isOpen={isThemeManagerOpen} 
+        onClose={() => setIsThemeManagerOpen(false)} 
+      />
     </div>
   );
 };
