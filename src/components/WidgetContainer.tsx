@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +15,7 @@ import AnalyticsTab from './AnalyticsTab';
 
 const WidgetContainer: React.FC = () => {
   const [activeTab, setActiveTab] = useLocalStorage('active-tab', 'widgets');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
     trackActivity('system', 'widget-container-mounted');
@@ -55,7 +57,17 @@ const WidgetContainer: React.FC = () => {
       case 'analytics':
         return <AnalyticsTab />;
       case 'settings':
-        return <SettingsPanel />;
+        return (
+          <div className="p-4">
+            <Button onClick={() => setIsSettingsOpen(true)}>
+              Open Settings
+            </Button>
+            <SettingsPanel 
+              isOpen={isSettingsOpen} 
+              onClose={() => setIsSettingsOpen(false)} 
+            />
+          </div>
+        );
       default:
         return null;
     }
