@@ -1,7 +1,10 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { Palette, Plug, Bell } from 'lucide-react';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import SidebarOverlay from './SidebarOverlay';
 import NotesWidget from './widgets/NotesWidget';
 import ToDoWidget from './widgets/ToDoWidget';
 import TimerWidget from './widgets/TimerWidget';

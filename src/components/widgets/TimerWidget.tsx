@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,79 +26,58 @@ const TimerWidget: React.FC<TimerWidgetProps> = ({ widgetId }) => {
   const WORK_DURATION = 25 * 60; // 25 minutes
   const BREAK_DURATION = 5 * 60; // 5 minutes
 
+  // Timer logic using setInterval since we're in a web environment
   useEffect(() => {
-    // Listen for timer updates from main process
-    if (window.electronAPI) {
-      const handleTimerUpdate = (data: any) => {
-        setTimeLeft(data.timeLeft);
-        setIsRunning(data.isRunning);
-        setCurrentSession(data.currentSession);
-        setSessionsCompleted(data.sessionsCompleted);
-      };
+    let interval: NodeJS.Timeout | null = null;
 
-      window.electronAPI.on('timer:update', handleTimerUpdate);
-      
-      // Load initial timer state
-      loadTimerState();
-
-      return () => {
-        window.electronAPI.removeListener('timer:update', handleTimerUpdate);
-      };
-    }
-  }, []);
-
-  const loadTimerState = async () => {
-    try {
-      if (window.electronAPI) {
-        const state = await window.electronAPI.invoke('timer:getState');
-        if (state) {
-          setTimeLeft(state.timeLeft);
-          setIsRunning(state.isRunning);
-          setCurrentSession(state.currentSession);
-          setSessionsCompleted(state.sessionsCompleted);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load timer state:', error);
-    }
-  };
-
-  const handleStart = async () => {
-    try {
-      if (window.electronAPI) {
-        await window.electronAPI.invoke('timer:start', {
-          duration: timeLeft,
-          type: currentSession,
-          mode
+    if (isRunning && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            setIsRunning(false);
+            handleSessionComplete();
+            return 0;
+          }
+          return prev - 1;
         });
-        setIsRunning(true);
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isRunning, timeLeft]);
+
+  const handleSessionComplete = () => {
+    // Play notification sound or show toast
+    console.log('Timer completed!');
+    
+    if (mode === 'pomodoro') {
+      if (currentSession === 'work') {
+        setSessionsCompleted(prev => prev + 1);
+        setCurrentSession('break');
+        setTimeLeft(BREAK_DURATION);
+      } else {
+        setCurrentSession('work');
+        setTimeLeft(WORK_DURATION);
       }
-    } catch (error) {
-      console.error('Failed to start timer:', error);
     }
   };
 
-  const handlePause = async () => {
-    try {
-      if (window.electronAPI) {
-        await window.electronAPI.invoke('timer:pause');
-        setIsRunning(false);
-      }
-    } catch (error) {
-      console.error('Failed to pause timer:', error);
-    }
+  const handleStart = () => {
+    setIsRunning(true);
+    console.log('Timer started:', { mode, timeLeft, currentSession });
   };
 
-  const handleReset = async () => {
-    try {
-      if (window.electronAPI) {
-        await window.electronAPI.invoke('timer:reset');
-        setIsRunning(false);
-        setTimeLeft(currentSession === 'work' ? WORK_DURATION : BREAK_DURATION);
-      }
-    } catch (error) {
-      console.error('Failed to reset timer:', error);
-    }
+  const handlePause = () => {
+    setIsRunning(false);
+    console.log('Timer paused');
+  };
+
+  const handleReset = () => {
+    setIsRunning(false);
+    setTimeLeft(currentSession === 'work' ? WORK_DURATION : BREAK_DURATION);
+    console.log('Timer reset');
   };
 
   const handleModeChange = (newMode: 'pomodoro' | 'timer' | 'stopwatch') => {
@@ -137,92 +115,88 @@ const TimerWidget: React.FC<TimerWidgetProps> = ({ widgetId }) => {
   };
 
   return (
-    <Card className="bg-transparent border-gray-700">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg text-gray-100">Timer</CardTitle>
-          <div className="flex gap-1">
-            {['pomodoro', 'timer', 'stopwatch'].map((m) => (
-              <Button
-                key={m}
-                size="sm"
-                variant={mode === m ? "default" : "outline"}
-                onClick={() => handleModeChange(m as any)}
-                className={`text-xs ${mode === m ? 'bg-blue-600' : 'bg-gray-700 border-gray-600 text-gray-300'}`}
-              >
-                {m.charAt(0).toUpperCase() + m.slice(1)}
-              </Button>
-            ))}
+    <div className="bg-transparent border-none p-3">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-medium text-gray-200">Timer</h3>
+        <div className="flex gap-1">
+          {['pomodoro', 'timer', 'stopwatch'].map((m) => (
+            <Button
+              key={m}
+              size="sm"
+              variant={mode === m ? "default" : "outline"}
+              onClick={() => handleModeChange(m as any)}
+              className={`text-xs h-6 px-2 ${mode === m ? 'bg-purple-600 text-white' : 'bg-overlay-light border-gray-600 text-gray-300'}`}
+            >
+              {m.charAt(0).toUpperCase() + m.slice(1)}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <div className="text-center mb-3">
+        <div className={`text-2xl font-mono font-bold ${getSessionColor()}`}>
+          {formatTime(timeLeft)}
+        </div>
+        <div className="text-xs text-gray-400 mt-1">
+          {getSessionLabel()}
+        </div>
+      </div>
+
+      {mode === 'pomodoro' && (
+        <div className="text-center mb-3">
+          <div className="text-xs text-gray-400">
+            Sessions: <span className="text-white font-medium">{sessionsCompleted}</span>
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="text-center">
-          <div className={`text-4xl font-mono font-bold ${getSessionColor()}`}>
-            {formatTime(timeLeft)}
-          </div>
-          <div className="text-sm text-gray-400 mt-1">
-            {getSessionLabel()}
-          </div>
-        </div>
+      )}
 
-        {mode === 'pomodoro' && (
-          <div className="text-center">
-            <div className="text-sm text-gray-400">
-              Sessions Completed: <span className="text-white font-medium">{sessionsCompleted}</span>
-            </div>
-          </div>
-        )}
-
-        <div className="flex justify-center gap-2">
-          {!isRunning ? (
-            <Button
-              onClick={handleStart}
-              className="bg-green-600 hover:bg-green-700"
-              size="sm"
-            >
-              <Play className="w-4 h-4 mr-1" />
-              Start
-            </Button>
-          ) : (
-            <Button
-              onClick={handlePause}
-              className="bg-yellow-600 hover:bg-yellow-700"
-              size="sm"
-            >
-              <Pause className="w-4 h-4 mr-1" />
-              Pause
-            </Button>
-          )}
-          
+      <div className="flex justify-center gap-2 mb-3">
+        {!isRunning ? (
           <Button
-            onClick={handleReset}
-            variant="outline"
-            className="bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600"
+            onClick={handleStart}
+            className="bg-green-600 hover:bg-green-700 h-7 px-3 text-xs"
             size="sm"
           >
-            <RotateCcw className="w-4 h-4 mr-1" />
-            Reset
+            <Play className="w-3 h-3 mr-1" />
+            Start
           </Button>
-        </div>
-
-        {mode === 'timer' && (
-          <div className="flex justify-center gap-2">
-            {[5, 10, 15, 25, 30].map((mins) => (
-              <Button
-                key={mins}
-                onClick={() => setTimeLeft(mins * 60)}
-                variant="outline"
-                size="sm"
-                className="bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 text-xs"
-              >
-                {mins}m
-              </Button>
-            ))}
-          </div>
+        ) : (
+          <Button
+            onClick={handlePause}
+            className="bg-yellow-600 hover:bg-yellow-700 h-7 px-3 text-xs"
+            size="sm"
+          >
+            <Pause className="w-3 h-3 mr-1" />
+            Pause
+          </Button>
         )}
-      </CardContent>
-    </Card>
+        
+        <Button
+          onClick={handleReset}
+          className="bg-overlay-light border-gray-600 text-gray-200 hover:bg-glass h-7 px-3 text-xs"
+          size="sm"
+        >
+          <RotateCcw className="w-3 h-3 mr-1" />
+          Reset
+        </Button>
+      </div>
+
+      {mode === 'timer' && (
+        <div className="flex justify-center gap-1 flex-wrap">
+          {[5, 10, 15, 25, 30].map((mins) => (
+            <Button
+              key={mins}
+              onClick={() => setTimeLeft(mins * 60)}
+              variant="outline"
+              size="sm"
+              className="bg-overlay-light border-gray-600 text-gray-300 hover:bg-glass text-xs h-6 px-2"
+            >
+              {mins}m
+            </Button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
