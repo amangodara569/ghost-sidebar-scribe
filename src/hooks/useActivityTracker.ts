@@ -63,6 +63,11 @@ export const useActivityTracker = () => {
     // Track in new analytics engine
     analyticsEngine.trackEvent('note', action, { wordCount: length });
 
+    // Trigger focus tracking
+    window.dispatchEvent(new CustomEvent('focus:activity', { 
+      detail: { type: 'note', value: 1 } 
+    }));
+
     // Keep legacy tracking for backwards compatibility
     setActivity(prev => ({
       ...prev,
@@ -80,6 +85,11 @@ export const useActivityTracker = () => {
   const trackTodoActivity = useCallback((action: 'added' | 'completed' | 'deleted', isOverdue?: boolean) => {
     // Track in new analytics engine
     analyticsEngine.trackEvent('todo', action, { isOverdue });
+
+    // Trigger focus tracking
+    window.dispatchEvent(new CustomEvent('focus:activity', { 
+      detail: { type: 'todo', value: 1 } 
+    }));
 
     // Keep legacy tracking for backwards compatibility
     setActivity(prev => {
@@ -105,6 +115,11 @@ export const useActivityTracker = () => {
     // Track in new analytics engine
     analyticsEngine.trackEvent('timer', action, {}, duration);
 
+    // Trigger focus tracking
+    window.dispatchEvent(new CustomEvent('focus:activity', { 
+      detail: { type: 'timer', value: duration || 1 } 
+    }));
+
     // Keep legacy tracking for backwards compatibility
     setActivity(prev => ({
       ...prev,
@@ -124,6 +139,11 @@ export const useActivityTracker = () => {
   const trackSpotifyActivity = useCallback((action: 'played' | 'paused', mood?: 'focus' | 'relax' | 'energetic') => {
     // Track in new analytics engine
     analyticsEngine.trackEvent('spotify', action, { mood });
+
+    // Trigger focus tracking
+    window.dispatchEvent(new CustomEvent('focus:activity', { 
+      detail: { type: 'spotify', value: 1 } 
+    }));
 
     // Keep legacy tracking for backwards compatibility
     setActivity(prev => ({

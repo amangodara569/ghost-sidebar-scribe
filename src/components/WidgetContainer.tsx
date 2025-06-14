@@ -35,10 +35,12 @@ import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
 import { useBackgroundTasks } from '@/hooks/useBackgroundTasks';
 import ScratchpadWidget from './widgets/ScratchpadWidget';
 import StickyNotesWidget from './widgets/StickyNotesWidget';
+import FocusTrackerWidget from './widgets/FocusTrackerWidget';
+import { useFocusTracker } from '@/hooks/useFocusTracker';
 
 interface Widget {
   id: string;
-  type: 'notes' | 'todo' | 'timer' | 'bookmark' | 'spotify' | 'analytics' | 'freespace' | 'notifications' | 'insights' | 'scratchpad' | 'stickynotes';
+  type: 'notes' | 'todo' | 'timer' | 'bookmark' | 'spotify' | 'analytics' | 'freespace' | 'notifications' | 'insights' | 'scratchpad' | 'stickynotes' | 'focustracker';
   order: number;
   enabled: boolean;
 }
@@ -61,6 +63,7 @@ const WidgetContainer: React.FC = () => {
   } = useWorkspace();
   const commandPalette = useCommandPalette();
   const { trackNoteActivity, trackTodoActivity, trackTimerActivity, trackSpotifyActivity } = useActivityTracker();
+  const { trackFocusActivity } = useFocusTracker();
   const [currentFocusWidget, setCurrentFocusWidget] = useState<string>('');
   const { pendingCount } = useNotifications();
   
@@ -181,16 +184,17 @@ const WidgetContainer: React.FC = () => {
 
   const getDefaultWidgets = (): Widget[] => [
     { id: 'notifications-1', type: 'notifications', order: 0, enabled: true },
-    { id: 'insights-1', type: 'insights', order: 1, enabled: true },
-    { id: 'stickynotes-1', type: 'stickynotes', order: 2, enabled: true },
-    { id: 'scratchpad-1', type: 'scratchpad', order: 3, enabled: true },
-    { id: 'analytics-1', type: 'analytics', order: 4, enabled: true },
-    { id: 'freespace-1', type: 'freespace', order: 5, enabled: true },
-    { id: 'notes-1', type: 'notes', order: 6, enabled: true },
-    { id: 'todo-1', type: 'todo', order: 7, enabled: true },
-    { id: 'timer-1', type: 'timer', order: 8, enabled: true },
-    { id: 'bookmark-1', type: 'bookmark', order: 9, enabled: true },
-    { id: 'spotify-1', type: 'spotify', order: 10, enabled: true },
+    { id: 'focustracker-1', type: 'focustracker', order: 1, enabled: true },
+    { id: 'insights-1', type: 'insights', order: 2, enabled: true },
+    { id: 'stickynotes-1', type: 'stickynotes', order: 3, enabled: true },
+    { id: 'scratchpad-1', type: 'scratchpad', order: 4, enabled: true },
+    { id: 'analytics-1', type: 'analytics', order: 5, enabled: true },
+    { id: 'freespace-1', type: 'freespace', order: 6, enabled: true },
+    { id: 'notes-1', type: 'notes', order: 7, enabled: true },
+    { id: 'todo-1', type: 'todo', order: 8, enabled: true },
+    { id: 'timer-1', type: 'timer', order: 9, enabled: true },
+    { id: 'bookmark-1', type: 'bookmark', order: 10, enabled: true },
+    { id: 'spotify-1', type: 'spotify', order: 11, enabled: true },
   ];
 
   const handleDragEnd = async (result: DropResult) => {
@@ -230,6 +234,8 @@ const WidgetContainer: React.FC = () => {
     switch (widget.type) {
       case 'notifications':
         return <NotificationCenter key={widget.id} widgetId={widget.id} {...commonProps} />;
+      case 'focustracker':
+        return <FocusTrackerWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'insights':
         return <InsightsDashboard key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'stickynotes':
@@ -241,15 +247,15 @@ const WidgetContainer: React.FC = () => {
       case 'freespace':
         return <FreeSpaceWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'notes':
-        return <NotesWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
+        return <NotesWidget key={widget.id} widgetId={widget.id} {...commonProps} onActivity={() => trackFocusActivity('note')} />;
       case 'todo':
-        return <ToDoWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
+        return <ToDoWidget key={widget.id} widgetId={widget.id} {...commonProps} onActivity={() => trackFocusActivity('todo')} />;
       case 'timer':
-        return <TimerWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
+        return <TimerWidget key={widget.id} widgetId={widget.id} {...commonProps} onActivity={(duration) => trackFocusActivity('timer', duration)} />;
       case 'bookmark':
         return <BookmarkWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'spotify':
-        return <SpotifyWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
+        return <SpotifyWidget key={widget.id} widgetId={widget.id} {...commonProps} onActivity={() => trackFocusActivity('spotify')} />;
       default:
         return null;
     }
