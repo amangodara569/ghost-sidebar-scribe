@@ -2,6 +2,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Minimize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface SidebarOverlayProps {
   children: React.ReactNode;
@@ -9,29 +11,83 @@ interface SidebarOverlayProps {
   onToggleVisibility: () => void;
 }
 
+interface WindowBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 const SidebarOverlay: React.FC<SidebarOverlayProps> = ({ 
   children, 
   isVisible, 
   onToggleVisibility 
 }) => {
-  const [position, setPosition] = useState({ x: 20, y: 20 });
-  const [size, setSize] = useState({ width: 320, height: 600 });
+  const [bounds, setBounds] = useLocalStorage<WindowBounds>('sidebar-bounds', {
+    x: 20,
+    y: 20,
+    width: 320,
+    height: 600
+  });
+  
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const lastSaveTime = useRef(Date.now());
 
+  // Enhanced keyboard handling
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Toggle with Ctrl/Cmd + `
       if ((event.ctrlKey || event.metaKey) && event.key === '`') {
         event.preventDefault();
         onToggleVisibility();
+      }
+      
+      // Close with Escape when focused
+      if (event.key === 'Escape' && isVisible) {
+        const activeElement = document.activeElement;
+        const sidebarElement = sidebarRef.current;
+        if (sidebarElement && sidebarElement.contains(activeElement)) {
+          onToggleVisibility();
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onToggleVisibility]);
+  }, [onToggleVisibility, isVisible]);
+
+  // Debounced bounds saving
+  const saveBounds = React.useCallback((newBounds: WindowBounds) => {
+    const now = Date.now();
+    if (now - lastSaveTime.current > 500) { // Debounce to 500ms
+      setBounds(newBounds);
+      lastSaveTime.current = now;
+    }
+  }, [setBounds]);
+
+  // Edge snapping logic
+  const snapToEdge = (x: number, y: number) => {
+    const snapDistance = 20;
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+    
+    let snappedX = x;
+    let snappedY = y;
+    
+    // Snap to left edge
+    if (x <= snapDistance) snappedX = 0;
+    // Snap to right edge
+    if (x + bounds.width >= screenWidth - snapDistance) snappedX = screenWidth - bounds.width;
+    // Snap to top edge
+    if (y <= snapDistance) snappedY = 0;
+    // Snap to bottom edge
+    if (y + bounds.height >= screenHeight - snapDistance) snappedY = screenHeight - bounds.height;
+    
+    return { x: snappedX, y: snappedY };
+  };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -46,18 +102,21 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
     }
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
+  const handleMouseMove = React.useCallback((e: MouseEvent) => {
     if (isDragging) {
-      setPosition({
-        x: e.clientX - dragOffset.x,
-        y: e.clientY - dragOffset.y
-      });
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
+      const snapped = snapToEdge(newX, newY);
+      
+      const newBounds = { ...bounds, x: snapped.x, y: snapped.y };
+      setBounds(newBounds);
+      saveBounds(newBounds);
     }
-  };
+  }, [isDragging, dragOffset, bounds, saveBounds, snapToEdge]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = React.useCallback(() => {
     setIsDragging(false);
-  };
+  }, []);
 
   useEffect(() => {
     if (isDragging) {
@@ -68,70 +127,146 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
         window.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isDragging, dragOffset]);
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
-  if (!isVisible) return null;
+  // Handle window resize for bounds validation
+  useEffect(() => {
+    const handleWindowResize = () => {
+      const maxX = window.innerWidth - bounds.width;
+      const maxY = window.innerHeight - bounds.height;
+      
+      if (bounds.x > maxX || bounds.y > maxY) {
+        const newBounds = {
+          ...bounds,
+          x: Math.min(bounds.x, Math.max(0, maxX)),
+          y: Math.min(bounds.y, Math.max(0, maxY))
+        };
+        setBounds(newBounds);
+      }
+    };
+
+    window.addEventListener('resize', handleWindowResize);
+    return () => window.removeEventListener('resize', handleWindowResize);
+  }, [bounds, setBounds]);
+
+  const sidebarVariants = {
+    hidden: {
+      opacity: 0,
+      scale: 0.95,
+      x: bounds.x + 20,
+      transition: {
+        duration: 0.2,
+        ease: "easeInOut"
+      }
+    },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      x: bounds.x,
+      transition: {
+        duration: 0.3,
+        ease: "easeOutBack"
+      }
+    }
+  };
 
   return (
-    <div
-      ref={sidebarRef}
-      className="fixed z-50 bg-overlay backdrop-blur-md rounded-lg shadow-2xl border border-gray-600/30 overflow-hidden"
-      style={{
-        left: position.x,
-        top: position.y,
-        width: size.width,
-        height: size.height,
-        resize: 'both',
-        minWidth: 280,
-        minHeight: 400,
-        maxWidth: 600,
-        maxHeight: '90vh'
-      }}
-    >
-      {/* Draggable Header */}
-      <div
-        className="flex items-center justify-between px-3 py-2 bg-overlay-light cursor-grab active:cursor-grabbing select-none"
-        onMouseDown={handleMouseDown}
-      >
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-500/70"></div>
-          <div className="w-3 h-3 rounded-full bg-yellow-500/70"></div>
-          <div className="w-3 h-3 rounded-full bg-green-500/70"></div>
-          <span className="text-sm text-gray-300 ml-2 font-medium">VibeMind</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0 text-gray-400 hover:text-gray-200 hover:bg-glass"
-            onClick={onToggleVisibility}
+    <AnimatePresence>
+      {isVisible && (
+        <motion.div
+          ref={sidebarRef}
+          className="fixed z-50 bg-overlay backdrop-blur-md rounded-lg shadow-2xl border border-gray-600/30 overflow-hidden"
+          style={{
+            left: bounds.x,
+            top: bounds.y,
+            width: bounds.width,
+            height: bounds.height,
+            resize: 'both',
+            minWidth: 280,
+            minHeight: 400,
+            maxWidth: 600,
+            maxHeight: '90vh'
+          }}
+          variants={sidebarVariants}
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+          role="dialog"
+          aria-label="VibeMind Sidebar"
+          aria-modal="true"
+        >
+          {/* Draggable Header */}
+          <motion.div
+            className="flex items-center justify-between px-3 py-2 bg-overlay-light cursor-grab active:cursor-grabbing select-none"
+            onMouseDown={handleMouseDown}
+            whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+            transition={{ duration: 0.2 }}
           >
-            <Minimize className="w-3 h-3" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 w-6 p-0 text-gray-400 hover:text-red-400 hover:bg-glass"
-            onClick={onToggleVisibility}
+            <div className="flex items-center gap-2">
+              <motion.div 
+                className="w-3 h-3 rounded-full bg-red-500/70"
+                whileHover={{ scale: 1.1, backgroundColor: 'rgba(239, 68, 68, 1)' }}
+                transition={{ duration: 0.2 }}
+              />
+              <motion.div 
+                className="w-3 h-3 rounded-full bg-yellow-500/70"
+                whileHover={{ scale: 1.1, backgroundColor: 'rgba(245, 158, 11, 1)' }}
+                transition={{ duration: 0.2 }}
+              />
+              <motion.div 
+                className="w-3 h-3 rounded-full bg-green-500/70"
+                whileHover={{ scale: 1.1, backgroundColor: 'rgba(34, 197, 94, 1)' }}
+                transition={{ duration: 0.2 }}
+              />
+              <span className="text-sm text-gray-300 ml-2 font-medium">VibeMind</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0 text-gray-400 hover:text-gray-200 hover:bg-glass"
+                onClick={onToggleVisibility}
+                aria-label="Minimize sidebar"
+                tabIndex={0}
+              >
+                <Minimize className="w-3 h-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0 text-gray-400 hover:text-red-400 hover:bg-glass"
+                onClick={onToggleVisibility}
+                aria-label="Close sidebar"
+                tabIndex={0}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </div>
+          </motion.div>
+
+          {/* Content Area */}
+          <motion.div 
+            className="h-full overflow-auto p-3 pb-16"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.3 }}
           >
-            <X className="w-3 h-3" />
-          </Button>
-        </div>
-      </div>
+            {children}
+          </motion.div>
 
-      {/* Content Area */}
-      <div className="h-full overflow-auto p-3 pb-16">
-        {children}
-      </div>
-
-      {/* Resize Handle */}
-      <div 
-        className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize opacity-50 hover:opacity-100"
-        style={{
-          background: 'linear-gradient(-45deg, transparent 40%, rgba(156, 163, 175, 0.5) 50%, transparent 60%)'
-        }}
-      />
-    </div>
+          {/* Resize Handle */}
+          <motion.div 
+            className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize opacity-50 hover:opacity-100"
+            style={{
+              background: 'linear-gradient(-45deg, transparent 40%, rgba(156, 163, 175, 0.5) 50%, transparent 60%)'
+            }}
+            whileHover={{ scale: 1.2 }}
+            transition={{ duration: 0.2 }}
+            aria-label="Resize sidebar"
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { Palette, Plug, Bell } from 'lucide-react';
@@ -32,6 +31,8 @@ import NotificationManager from './NotificationManager';
 import { useNotifications } from '@/hooks/useNotifications';
 import InsightsDashboard from './widgets/InsightsDashboard';
 import DailySummaryPopup from './DailySummaryPopup';
+import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
+import { useBackgroundTasks } from '@/hooks/useBackgroundTasks';
 
 interface Widget {
   id: string;
@@ -46,6 +47,8 @@ const WidgetContainer: React.FC = () => {
   const [isNotificationManagerOpen, setIsNotificationManagerOpen] = useState(false);
   const [currentToast, setCurrentToast] = useState<any>(null);
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  
   const { currentTheme, isCustom } = useTheme();
   const { 
     currentWorkspace, 
@@ -67,6 +70,10 @@ const WidgetContainer: React.FC = () => {
     closePluginStore,
     emitActivity
   } = usePluginSystem();
+
+  // Performance monitoring
+  const { logCustomMetric } = usePerformanceMonitor('WidgetContainer');
+  const { registerTask, unregisterTask } = useBackgroundTasks();
 
   useEffect(() => {
     // Load widget configuration from workspace or storage
@@ -130,6 +137,22 @@ const WidgetContainer: React.FC = () => {
       window.removeEventListener('vibemind:start-timer', handleStartTimer as EventListener);
     };
   }, []);
+
+  // Register background analytics polling
+  useEffect(() => {
+    registerTask({
+      id: 'analytics-polling',
+      interval: 30000, // 30 seconds
+      callback: () => {
+        // Trigger analytics update
+        window.dispatchEvent(new CustomEvent('analytics:updated'));
+        logCustomMetric('analytics-poll', Date.now());
+      },
+      enabled: true
+    });
+
+    return () => unregisterTask('analytics-polling');
+  }, [registerTask, unregisterTask, logCustomMetric]);
 
   const loadWidgets = async () => {
     if (currentWorkspace) {
@@ -259,151 +282,202 @@ const WidgetContainer: React.FC = () => {
   };
 
   return (
-    <div 
-      className="p-4 space-y-4 min-h-screen transition-colors duration-300"
-      style={{ 
-        backgroundColor: 'var(--theme-background)',
-        color: 'var(--theme-text)'
-      }}
+    <SidebarOverlay 
+      isVisible={isSidebarVisible} 
+      onToggleVisibility={() => setIsSidebarVisible(!isSidebarVisible)}
     >
-      {/* Daily Summary Popup */}
-      <DailySummaryPopup />
+      <div 
+        className="space-y-4 transition-colors duration-300"
+        style={{ 
+          color: 'var(--theme-text)'
+        }}
+      >
+        {/* Daily Summary Popup */}
+        <DailySummaryPopup />
 
-      {/* Workspace Manager */}
-      <div className="mb-4">
-        <WorkspaceManager />
-      </div>
-
-      {/* VibeMind AI Assistant */}
-      <VibeMind currentWidget={currentFocusWidget} />
-
-      {/* Theme Toggle Button */}
-      <div className="flex justify-end mb-4 gap-2">
-        <button
-          onClick={() => setIsNotificationManagerOpen(true)}
-          className="p-2 rounded-lg transition-all duration-200 hover:scale-105 relative"
-          style={{ 
-            backgroundColor: 'var(--theme-surface)',
-            color: 'var(--theme-accent)',
-            border: `1px solid var(--theme-border)`
-          }}
-          title="Notifications"
-        >
-          <Bell className="w-5 h-5" />
-          {pendingCount > 0 && (
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
-              {pendingCount > 9 ? '9+' : pendingCount}
-            </div>
-          )}
-        </button>
-        <button
-          onClick={openPluginStore}
-          className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
-          style={{ 
-            backgroundColor: 'var(--theme-surface)',
-            color: 'var(--theme-accent)',
-            border: `1px solid var(--theme-border)`
-          }}
-          title="Plugin Store"
-        >
-          <Plug className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => setIsThemeManagerOpen(true)}
-          className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
-          style={{ 
-            backgroundColor: 'var(--theme-surface)',
-            color: 'var(--theme-accent)',
-            border: `1px solid var(--theme-border)`
-          }}
-          title="Theme Manager (Ctrl+Shift+T)"
-        >
-          <Palette className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Voice Controller */}
-      <div className="fixed bottom-4 right-4 z-50">
-        <div 
-          className="rounded-lg border shadow-lg backdrop-blur-sm"
-          style={{
-            backgroundColor: `var(--theme-surface)`,
-            borderColor: `var(--theme-border)`,
-          }}
-        >
-          <VoiceController
-            isEnabled={isVoiceEnabled}
-            onToggleEnabled={setIsVoiceEnabled}
-            onVoiceCommand={handleVoiceCommand}
-          />
+        {/* Workspace Manager */}
+        <div className="mb-4">
+          <WorkspaceManager />
         </div>
+
+        {/* VibeMind AI Assistant */}
+        <VibeMind currentWidget={currentFocusWidget} />
+
+        {/* Control Buttons */}
+        <div className="flex justify-end mb-4 gap-2">
+          <Button
+            onClick={() => setIsNotificationManagerOpen(true)}
+            className="p-2 rounded-lg transition-all duration-200 hover:scale-105 relative"
+            style={{ 
+              backgroundColor: 'var(--theme-surface)',
+              color: 'var(--theme-accent)',
+              border: `1px solid var(--theme-border)`
+            }}
+            title="Notifications"
+            aria-label={`Notifications ${pendingCount > 0 ? `(${pendingCount} pending)` : ''}`}
+            tabIndex={0}
+          >
+            <Bell className="w-5 h-5" />
+            {pendingCount > 0 && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
+                {pendingCount > 9 ? '9+' : pendingCount}
+              </div>
+            )}
+          </Button>
+          
+          <Button
+            onClick={openPluginStore}
+            className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
+            style={{ 
+              backgroundColor: 'var(--theme-surface)',
+              color: 'var(--theme-accent)',
+              border: `1px solid var(--theme-border)`
+            }}
+            title="Plugin Store"
+            aria-label="Open Plugin Store"
+            tabIndex={0}
+          >
+            <Plug className="w-5 h-5" />
+          </Button>
+          
+          <Button
+            onClick={() => setIsThemeManagerOpen(true)}
+            className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
+            style={{ 
+              backgroundColor: 'var(--theme-surface)',
+              color: 'var(--theme-accent)',
+              border: `1px solid var(--theme-border)`
+            }}
+            title="Theme Manager (Ctrl+Shift+T)"
+            aria-label="Open Theme Manager"
+            tabIndex={0}
+          >
+            <Palette className="w-5 h-5" />
+          </Button>
+        </div>
+
+        {/* Voice Controller */}
+        <div className="fixed bottom-4 right-4 z-50">
+          <div 
+            className="rounded-lg border shadow-lg backdrop-blur-sm"
+            style={{
+              backgroundColor: `var(--theme-surface)`,
+              borderColor: `var(--theme-border)`,
+            }}
+          >
+            <VoiceController
+              isEnabled={isVoiceEnabled}
+              onToggleEnabled={setIsVoiceEnabled}
+              onVoiceCommand={handleVoiceCommand}
+            />
+          </div>
+        </div>
+
+        {/* Widget Grid */}
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <Droppable droppableId="widgets">
+            {(provided) => (
+              <div
+                {...provided.droppableProps}
+                ref={provided.innerRef}
+                className="space-y-3"
+              >
+                {widgets
+                  .filter(widget => widget.enabled)
+                  .sort((a, b) => a.order - b.order)
+                  .map((widget, index) => (
+                    <Draggable key={widget.id} draggableId={widget.id} index={index}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          className={`
+                            rounded-lg border transition-all duration-200 backdrop-blur-sm
+                            ${snapshot.isDragging ? 'shadow-2xl scale-105' : 'shadow-lg'}
+                          `}
+                          style={{
+                            backgroundColor: `var(--theme-surface)`,
+                            borderColor: `var(--theme-border)`,
+                            opacity: `var(--theme-opacity)`,
+                          }}
+                        >
+                          {renderWidget(widget)}
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
+
+        {/* Theme Toggle Button */}
+        <div className="flex justify-end mb-4 gap-2">
+          <button
+            onClick={() => setIsNotificationManagerOpen(true)}
+            className="p-2 rounded-lg transition-all duration-200 hover:scale-105 relative"
+            style={{ 
+              backgroundColor: 'var(--theme-surface)',
+              color: 'var(--theme-accent)',
+              border: `1px solid var(--theme-border)`
+            }}
+            title="Notifications"
+          >
+            <Bell className="w-5 h-5" />
+            {pendingCount > 0 && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
+                {pendingCount > 9 ? '9+' : pendingCount}
+              </div>
+            )}
+          </button>
+          <button
+            onClick={openPluginStore}
+            className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
+            style={{ 
+              backgroundColor: 'var(--theme-surface)',
+              color: 'var(--theme-accent)',
+              border: `1px solid var(--theme-border)`
+            }}
+            title="Plugin Store"
+          >
+            <Plug className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => setIsThemeManagerOpen(true)}
+            className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
+            style={{ 
+              backgroundColor: 'var(--theme-surface)',
+              color: 'var(--theme-accent)',
+              border: `1px solid var(--theme-border)`
+            }}
+            title="Theme Manager (Ctrl+Shift+T)"
+          >
+            <Palette className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Notification Toast */}
+        <NotificationToast
+          notification={currentToast}
+          onClose={() => setCurrentToast(null)}
+        />
+
+        {/* Notification Manager */}
+        <NotificationManager
+          isOpen={isNotificationManagerOpen}
+          onClose={() => setIsNotificationManagerOpen(false)}
+        />
+
+        {/* Command Palette */}
+        <CommandPalette
+          isOpen={commandPalette.isOpen}
+          onClose={commandPalette.close}
+          setIsThemeManagerOpen={setIsThemeManagerOpen}
+        />
       </div>
-
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="widgets">
-          {(provided) => (
-            <div
-              {...provided.droppableProps}
-              ref={provided.innerRef}
-              className="space-y-3"
-            >
-              {widgets
-                .filter(widget => widget.enabled)
-                .sort((a, b) => a.order - b.order)
-                .map((widget, index) => (
-                  <Draggable key={widget.id} draggableId={widget.id} index={index}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        className={`
-                          rounded-lg border transition-all duration-200 backdrop-blur-sm
-                          ${snapshot.isDragging ? 'shadow-2xl scale-105' : 'shadow-lg'}
-                        `}
-                        style={{
-                          backgroundColor: `var(--theme-surface)`,
-                          borderColor: `var(--theme-border)`,
-                          opacity: `var(--theme-opacity)`,
-                        }}
-                      >
-                        {renderWidget(widget)}
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
-
-      <ThemeManager 
-        isOpen={isThemeManagerOpen} 
-        onClose={() => setIsThemeManagerOpen(false)} 
-      />
-
-      <PluginStore
-        isOpen={isPluginStoreOpen}
-        onClose={closePluginStore}
-      />
-
-      <NotificationManager
-        isOpen={isNotificationManagerOpen}
-        onClose={() => setIsNotificationManagerOpen(false)}
-      />
-
-      <CommandPalette
-        isOpen={commandPalette.isOpen}
-        onClose={commandPalette.close}
-        setIsThemeManagerOpen={setIsThemeManagerOpen}
-      />
-
-      <NotificationToast
-        notification={currentToast}
-        onClose={() => setCurrentToast(null)}
-      />
-    </div>
+    </SidebarOverlay>
   );
 };
 
