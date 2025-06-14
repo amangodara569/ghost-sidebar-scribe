@@ -73,16 +73,16 @@ const WidgetContainer: React.FC = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Grid3X3 className="w-5 h-5" />
-                    Widgets
+                    Productivity Tools
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <NotesWidget />
-                    <ToDoWidget />
-                    <TimerWidget />
-                    <SpotifyWidget />
-                    <StickyNotesWidget />
+                    <NotesWidget widgetId="notes-main" />
+                    <ToDoWidget widgetId="todo-main" />
+                    <TimerWidget widgetId="timer-main" />
+                    <SpotifyWidget widgetId="spotify-main" />
+                    <StickyNotesWidget widgetId="sticky-notes-main" />
                   </div>
                 </CardContent>
               </Card>

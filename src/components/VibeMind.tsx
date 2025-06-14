@@ -26,8 +26,8 @@ const VibeMind: React.FC = () => {
   // Initialize voice commands
   useVoiceCommands();
   
-  // Initialize notifications
-  useNotifications();
+  // Initialize notifications with default config
+  useNotifications({ enabled: true });
 
   useEffect(() => {
     trackActivity('system', 'vibemind-mounted');
