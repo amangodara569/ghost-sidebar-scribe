@@ -219,7 +219,8 @@ const WidgetContainer: React.FC = () => {
   const renderWidget = (widget: Widget) => {
     const commonProps = {
       'data-widget': widget.type,
-      onFocus: () => setCurrentFocusWidget(widget.type)
+      onFocus: () => setCurrentFocusWidget(widget.type),
+      className: 'sidebar-widget'
     };
 
     switch (widget.type) {
@@ -286,28 +287,33 @@ const WidgetContainer: React.FC = () => {
       isVisible={isSidebarVisible} 
       onToggleVisibility={() => setIsSidebarVisible(!isSidebarVisible)}
     >
-      <div 
-        className="space-y-4 transition-colors duration-300"
-        style={{ 
-          color: 'var(--theme-text)'
-        }}
-      >
+      <div className="sidebar-content sidebar-resize-transition">
         {/* Daily Summary Popup */}
         <DailySummaryPopup />
 
         {/* Workspace Manager */}
-        <div className="mb-4">
+        <div className="sidebar-widget" style={{ 
+          backgroundColor: 'var(--theme-surface)',
+          borderColor: 'var(--theme-border)',
+          border: '1px solid'
+        }}>
           <WorkspaceManager />
         </div>
 
         {/* VibeMind AI Assistant */}
-        <VibeMind currentWidget={currentFocusWidget} />
+        <div className="sidebar-widget" style={{ 
+          backgroundColor: 'var(--theme-surface)',
+          borderColor: 'var(--theme-border)',
+          border: '1px solid'
+        }}>
+          <VibeMind currentWidget={currentFocusWidget} />
+        </div>
 
         {/* Control Buttons */}
-        <div className="flex justify-end mb-4 gap-2">
+        <div className="sidebar-button-group" style={{ justifyContent: 'flex-end' }}>
           <Button
             onClick={() => setIsNotificationManagerOpen(true)}
-            className="p-2 rounded-lg transition-all duration-200 hover:scale-105 relative"
+            className="sidebar-button relative"
             style={{ 
               backgroundColor: 'var(--theme-surface)',
               color: 'var(--theme-accent)',
@@ -315,9 +321,8 @@ const WidgetContainer: React.FC = () => {
             }}
             title="Notifications"
             aria-label={`Notifications ${pendingCount > 0 ? `(${pendingCount} pending)` : ''}`}
-            tabIndex={0}
           >
-            <Bell className="w-5 h-5" />
+            <Bell className="w-4 h-4" />
             {pendingCount > 0 && (
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
                 {pendingCount > 9 ? '9+' : pendingCount}
@@ -327,7 +332,7 @@ const WidgetContainer: React.FC = () => {
           
           <Button
             onClick={openPluginStore}
-            className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
+            className="sidebar-button"
             style={{ 
               backgroundColor: 'var(--theme-surface)',
               color: 'var(--theme-accent)',
@@ -335,14 +340,13 @@ const WidgetContainer: React.FC = () => {
             }}
             title="Plugin Store"
             aria-label="Open Plugin Store"
-            tabIndex={0}
           >
-            <Plug className="w-5 h-5" />
+            <Plug className="w-4 h-4" />
           </Button>
           
           <Button
             onClick={() => setIsThemeManagerOpen(true)}
-            className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
+            className="sidebar-button"
             style={{ 
               backgroundColor: 'var(--theme-surface)',
               color: 'var(--theme-accent)',
@@ -350,9 +354,8 @@ const WidgetContainer: React.FC = () => {
             }}
             title="Theme Manager (Ctrl+Shift+T)"
             aria-label="Open Theme Manager"
-            tabIndex={0}
           >
-            <Palette className="w-5 h-5" />
+            <Palette className="w-4 h-4" />
           </Button>
         </div>
 
@@ -380,7 +383,7 @@ const WidgetContainer: React.FC = () => {
               <div
                 {...provided.droppableProps}
                 ref={provided.innerRef}
-                className="space-y-3"
+                className="flex flex-col gap-3"
               >
                 {widgets
                   .filter(widget => widget.enabled)
@@ -393,13 +396,15 @@ const WidgetContainer: React.FC = () => {
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
                           className={`
-                            rounded-lg border transition-all duration-200 backdrop-blur-sm
+                            sidebar-widget transition-all duration-200
                             ${snapshot.isDragging ? 'shadow-2xl scale-105' : 'shadow-lg'}
                           `}
                           style={{
                             backgroundColor: `var(--theme-surface)`,
                             borderColor: `var(--theme-border)`,
+                            border: '1px solid',
                             opacity: `var(--theme-opacity)`,
+                            ...provided.draggableProps.style,
                           }}
                         >
                           {renderWidget(widget)}
@@ -412,51 +417,6 @@ const WidgetContainer: React.FC = () => {
             )}
           </Droppable>
         </DragDropContext>
-
-        {/* Theme Toggle Button */}
-        <div className="flex justify-end mb-4 gap-2">
-          <button
-            onClick={() => setIsNotificationManagerOpen(true)}
-            className="p-2 rounded-lg transition-all duration-200 hover:scale-105 relative"
-            style={{ 
-              backgroundColor: 'var(--theme-surface)',
-              color: 'var(--theme-accent)',
-              border: `1px solid var(--theme-border)`
-            }}
-            title="Notifications"
-          >
-            <Bell className="w-5 h-5" />
-            {pendingCount > 0 && (
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
-                {pendingCount > 9 ? '9+' : pendingCount}
-              </div>
-            )}
-          </button>
-          <button
-            onClick={openPluginStore}
-            className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
-            style={{ 
-              backgroundColor: 'var(--theme-surface)',
-              color: 'var(--theme-accent)',
-              border: `1px solid var(--theme-border)`
-            }}
-            title="Plugin Store"
-          >
-            <Plug className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => setIsThemeManagerOpen(true)}
-            className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
-            style={{ 
-              backgroundColor: 'var(--theme-surface)',
-              color: 'var(--theme-accent)',
-              border: `1px solid var(--theme-border)`
-            }}
-            title="Theme Manager (Ctrl+Shift+T)"
-          >
-            <Palette className="w-5 h-5" />
-          </button>
-        </div>
 
         {/* Notification Toast */}
         <NotificationToast

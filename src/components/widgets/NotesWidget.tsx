@@ -16,9 +16,10 @@ interface Note {
 
 interface NotesWidgetProps {
   widgetId: string;
+  className?: string;
 }
 
-const NotesWidget: React.FC<NotesWidgetProps> = ({ widgetId }) => {
+const NotesWidget: React.FC<NotesWidgetProps> = ({ widgetId, className }) => {
   const [editor] = useState(() => withHistory(withReact(createEditor())));
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeNote, setActiveNote] = useState<Note | null>(null);
@@ -100,42 +101,64 @@ const NotesWidget: React.FC<NotesWidgetProps> = ({ widgetId }) => {
   }, []);
 
   return (
-    <Card className="bg-transparent border-gray-700">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg text-gray-100">Notes</CardTitle>
-          <div className="flex gap-2">
+    <div className={`${className || ''} sidebar-widget-content`}>
+      <div className="sidebar-widget-header">
+        <h3 className="sidebar-widget-title">Notes</h3>
+        <div className="sidebar-button-group">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={createNewNote}
+            className="sidebar-button"
+            style={{
+              backgroundColor: 'var(--theme-surface)',
+              borderColor: 'var(--theme-border)',
+              color: 'var(--theme-text)'
+            }}
+          >
+            New
+          </Button>
+          {isEditing && (
             <Button
               size="sm"
-              variant="outline"
-              onClick={createNewNote}
-              className="bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600"
+              onClick={handleSave}
+              className="sidebar-button"
+              style={{
+                backgroundColor: 'var(--theme-accent)',
+                color: 'white',
+                border: 'none'
+              }}
             >
-              New
+              Save
             </Button>
-            {isEditing && (
-              <Button
-                size="sm"
-                onClick={handleSave}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Save
-              </Button>
-            )}
-          </div>
+          )}
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+      
+      <div className="sidebar-widget-content">
         {activeNote ? (
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3">
             <input
               type="text"
               value={activeNote.title}
               onChange={(e) => setActiveNote({ ...activeNote, title: e.target.value })}
-              className="w-full bg-gray-800 border-gray-600 text-gray-100 px-3 py-2 rounded border focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="sidebar-input"
+              style={{
+                backgroundColor: 'var(--theme-background)',
+                borderColor: 'var(--theme-border)',
+                color: 'var(--theme-text)',
+                border: '1px solid'
+              }}
               placeholder="Note title..."
             />
-            <div className="min-h-[120px] bg-gray-800 border border-gray-600 rounded p-3">
+            <div 
+              className="min-h-[120px] rounded border p-3"
+              style={{
+                backgroundColor: 'var(--theme-background)',
+                borderColor: 'var(--theme-border)',
+                border: '1px solid'
+              }}
+            >
               <Slate
                 editor={editor}
                 initialValue={activeNote.content}
@@ -145,23 +168,24 @@ const NotesWidget: React.FC<NotesWidgetProps> = ({ widgetId }) => {
                   renderElement={renderElement}
                   renderLeaf={renderLeaf}
                   placeholder="Start typing your note..."
-                  className="text-gray-200 focus:outline-none min-h-[100px]"
+                  className="sidebar-text focus:outline-none min-h-[100px]"
+                  style={{ color: 'var(--theme-text)' }}
                 />
               </Slate>
             </div>
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-400">
-            <p>No notes yet. Create your first note!</p>
+          <div className="text-center py-8">
+            <p className="sidebar-text-secondary">No notes yet. Create your first note!</p>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 
 const DefaultElement = (props: any) => {
-  return <p {...props.attributes}>{props.children}</p>;
+  return <p {...props.attributes} className="sidebar-text">{props.children}</p>;
 };
 
 const Leaf = (props: any) => {
@@ -169,6 +193,7 @@ const Leaf = (props: any) => {
     <span
       {...props.attributes}
       style={{ fontWeight: props.leaf.bold ? 'bold' : 'normal' }}
+      className="sidebar-text"
     >
       {props.children}
     </span>
