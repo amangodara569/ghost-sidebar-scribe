@@ -21,6 +21,8 @@ import { useCommandPalette } from '@/hooks/useCommandPalette';
 import VoiceController from './VoiceController';
 import { useVoiceCommands } from '@/hooks/useVoiceCommands';
 import { createCommandRegistry } from '@/commands/commandRegistry';
+import VibeMind from './VibeMind';
+import { useActivityTracker } from '@/hooks/useActivityTracker';
 
 interface Widget {
   id: string;
@@ -43,6 +45,8 @@ const WidgetContainer: React.FC = () => {
     createWorkspace 
   } = useWorkspace();
   const commandPalette = useCommandPalette();
+  const { trackNoteActivity, trackTodoActivity, trackTimerActivity, trackSpotifyActivity } = useActivityTracker();
+  const [currentFocusWidget, setCurrentFocusWidget] = useState<string>('');
 
   useEffect(() => {
     // Load widget configuration from workspace or storage
@@ -80,6 +84,31 @@ const WidgetContainer: React.FC = () => {
 
     window.addEventListener('workspace:switched', handleWorkspaceSwitch as EventListener);
     return () => window.removeEventListener('workspace:switched', handleWorkspaceSwitch as EventListener);
+  }, []);
+
+  // Listen for VibeMind widget focus events
+  useEffect(() => {
+    const handleFocusWidget = (event: CustomEvent<string>) => {
+      setCurrentFocusWidget(event.detail);
+      // Scroll to widget or highlight it
+      const widgetElement = document.querySelector(`[data-widget="${event.detail}"]`);
+      if (widgetElement) {
+        widgetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    };
+
+    const handleStartTimer = (event: CustomEvent<number>) => {
+      // Integrate with timer widget
+      toast.success(`Starting ${event.detail} minute timer`);
+    };
+
+    window.addEventListener('vibemind:focus-widget', handleFocusWidget as EventListener);
+    window.addEventListener('vibemind:start-timer', handleStartTimer as EventListener);
+
+    return () => {
+      window.removeEventListener('vibemind:focus-widget', handleFocusWidget as EventListener);
+      window.removeEventListener('vibemind:start-timer', handleStartTimer as EventListener);
+    };
   }, []);
 
   const loadWidgets = async () => {
@@ -139,23 +168,28 @@ const WidgetContainer: React.FC = () => {
   };
 
   const renderWidget = (widget: Widget) => {
+    const commonProps = {
+      'data-widget': widget.type,
+      onFocus: () => setCurrentFocusWidget(widget.type)
+    };
+
     switch (widget.type) {
       case 'notifications':
-        return <NotificationCenter key={widget.id} widgetId={widget.id} />;
+        return <NotificationCenter key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'analytics':
-        return <LiveAnalyticsWidget key={widget.id} widgetId={widget.id} />;
+        return <LiveAnalyticsWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'freespace':
-        return <FreeSpaceWidget key={widget.id} widgetId={widget.id} />;
+        return <FreeSpaceWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'notes':
-        return <NotesWidget key={widget.id} widgetId={widget.id} />;
+        return <NotesWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'todo':
-        return <ToDoWidget key={widget.id} widgetId={widget.id} />;
+        return <ToDoWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'timer':
-        return <TimerWidget key={widget.id} widgetId={widget.id} />;
+        return <TimerWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'bookmark':
-        return <BookmarkWidget key={widget.id} widgetId={widget.id} />;
+        return <BookmarkWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'spotify':
-        return <SpotifyWidget key={widget.id} widgetId={widget.id} />;
+        return <SpotifyWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       default:
         return null;
     }
@@ -201,6 +235,9 @@ const WidgetContainer: React.FC = () => {
       <div className="mb-4">
         <WorkspaceManager />
       </div>
+
+      {/* VibeMind AI Assistant */}
+      <VibeMind currentWidget={currentFocusWidget} />
 
       {/* Theme Toggle Button */}
       <div className="flex justify-end mb-4">
