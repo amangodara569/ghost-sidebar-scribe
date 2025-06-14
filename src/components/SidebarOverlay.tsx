@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Minimize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -59,16 +59,16 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
   }, [onToggleVisibility, isVisible]);
 
   // Debounced bounds saving
-  const saveBounds = React.useCallback((newBounds: WindowBounds) => {
+  const saveBounds = useCallback((newBounds: WindowBounds) => {
     const now = Date.now();
-    if (now - lastSaveTime.current > 500) { // Debounce to 500ms
+    if (now - lastSaveTime.current > 100) { // Reduced debounce for smoother experience
       setBounds(newBounds);
       lastSaveTime.current = now;
     }
   }, [setBounds]);
 
   // Edge snapping logic
-  const snapToEdge = (x: number, y: number) => {
+  const snapToEdge = useCallback((x: number, y: number) => {
     const snapDistance = 20;
     const screenWidth = window.innerWidth;
     const screenHeight = window.innerHeight;
@@ -86,10 +86,17 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
     if (y + bounds.height >= screenHeight - snapDistance) snappedY = screenHeight - bounds.height;
     
     return { x: snappedX, y: snappedY };
-  };
+  }, [bounds.width, bounds.height]);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Only allow dragging from the header area
+    const target = e.target as HTMLElement;
+    const isHeaderOrChild = target.closest('.draggable-header');
+    
+    if (isHeaderOrChild && e.button === 0) { // Left mouse button only
+      e.preventDefault();
+      e.stopPropagation();
+      
       setIsDragging(true);
       const rect = sidebarRef.current?.getBoundingClientRect();
       if (rect) {
@@ -99,31 +106,46 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
         });
       }
     }
-  };
-
-  const handleMouseMove = React.useCallback((e: MouseEvent) => {
-    if (isDragging) {
-      const newX = e.clientX - dragOffset.x;
-      const newY = e.clientY - dragOffset.y;
-      const snapped = snapToEdge(newX, newY);
-      
-      const newBounds = { ...bounds, x: snapped.x, y: snapped.y };
-      setBounds(newBounds);
-      saveBounds(newBounds);
-    }
-  }, [isDragging, dragOffset, bounds, saveBounds, snapToEdge]);
-
-  const handleMouseUp = React.useCallback(() => {
-    setIsDragging(false);
   }, []);
 
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging) return;
+    
+    e.preventDefault();
+    const newX = e.clientX - dragOffset.x;
+    const newY = e.clientY - dragOffset.y;
+    
+    // Constrain to screen bounds
+    const maxX = window.innerWidth - bounds.width;
+    const maxY = window.innerHeight - bounds.height;
+    const constrainedX = Math.max(0, Math.min(newX, maxX));
+    const constrainedY = Math.max(0, Math.min(newY, maxY));
+    
+    const snapped = snapToEdge(constrainedX, constrainedY);
+    const newBounds = { ...bounds, x: snapped.x, y: snapped.y };
+    
+    setBounds(newBounds);
+    saveBounds(newBounds);
+  }, [isDragging, dragOffset, bounds, snapToEdge, setBounds, saveBounds]);
+
+  const handleMouseUp = useCallback((e: MouseEvent) => {
+    if (isDragging) {
+      e.preventDefault();
+      setIsDragging(false);
+    }
+  }, [isDragging]);
+
+  // Mouse event listeners
   useEffect(() => {
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mousemove', handleMouseMove, { passive: false });
+      document.addEventListener('mouseup', handleMouseUp, { passive: false });
+      document.body.style.userSelect = 'none'; // Prevent text selection while dragging
+      
       return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.userSelect = '';
       };
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
@@ -163,7 +185,8 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
             minWidth: 280,
             minHeight: 400,
             maxWidth: 600,
-            maxHeight: '90vh'
+            maxHeight: '90vh',
+            cursor: isDragging ? 'grabbing' : 'default'
           }}
           initial={{
             opacity: 0,
@@ -190,12 +213,13 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
         >
           {/* Draggable Header */}
           <motion.div
-            className="flex items-center justify-between px-3 py-2 bg-overlay-light cursor-grab active:cursor-grabbing select-none"
+            className="draggable-header flex items-center justify-between px-3 py-2 bg-overlay-light select-none"
+            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
             onMouseDown={handleMouseDown}
             whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
             transition={{ duration: 0.2 }}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pointer-events-none">
               <motion.div 
                 className="w-3 h-3 rounded-full bg-red-500/70"
                 whileHover={{ scale: 1.1, backgroundColor: 'rgba(239, 68, 68, 1)' }}
@@ -213,7 +237,7 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
               />
               <span className="text-sm text-gray-300 ml-2 font-medium">VibeMind</span>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 pointer-events-auto">
               <Button
                 size="sm"
                 variant="ghost"
