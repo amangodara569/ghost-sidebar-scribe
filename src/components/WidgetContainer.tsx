@@ -5,10 +5,11 @@ import NotesWidget from './widgets/NotesWidget';
 import ToDoWidget from './widgets/ToDoWidget';
 import TimerWidget from './widgets/TimerWidget';
 import BookmarkWidget from './widgets/BookmarkWidget';
+import SpotifyWidget from './widgets/SpotifyWidget';
 
 interface Widget {
   id: string;
-  type: 'notes' | 'todo' | 'timer' | 'bookmark';
+  type: 'notes' | 'todo' | 'timer' | 'bookmark' | 'spotify';
   order: number;
   enabled: boolean;
 }
@@ -41,6 +42,7 @@ const WidgetContainer: React.FC = () => {
     { id: 'todo-1', type: 'todo', order: 1, enabled: true },
     { id: 'timer-1', type: 'timer', order: 2, enabled: true },
     { id: 'bookmark-1', type: 'bookmark', order: 3, enabled: true },
+    { id: 'spotify-1', type: 'spotify', order: 4, enabled: true },
   ];
 
   const handleDragEnd = async (result: DropResult) => {
@@ -78,6 +80,8 @@ const WidgetContainer: React.FC = () => {
         return <TimerWidget key={widget.id} widgetId={widget.id} />;
       case 'bookmark':
         return <BookmarkWidget key={widget.id} widgetId={widget.id} />;
+      case 'spotify':
+        return <SpotifyWidget key={widget.id} widgetId={widget.id} />;
       default:
         return null;
     }
