@@ -26,7 +26,6 @@ const NotesWidget: React.FC<NotesWidgetProps> = ({ widgetId }) => {
 
   const initialValue: Descendant[] = [
     {
-      type: 'paragraph',
       children: [{ text: 'Start typing your note...' }],
     },
   ];
