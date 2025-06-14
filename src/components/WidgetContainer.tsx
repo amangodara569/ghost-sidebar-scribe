@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { Palette } from 'lucide-react';
@@ -16,6 +15,8 @@ import WorkspaceManager from './WorkspaceManager';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { Notification } from '@/services/NotificationService';
+import CommandPalette from './CommandPalette';
+import { useCommandPalette } from '@/hooks/useCommandPalette';
 
 interface Widget {
   id: string;
@@ -30,6 +31,7 @@ const WidgetContainer: React.FC = () => {
   const [currentToast, setCurrentToast] = useState<Notification | null>(null);
   const { currentTheme, isCustom } = useTheme();
   const { currentWorkspace, updateWorkspace } = useWorkspace();
+  const commandPalette = useCommandPalette();
 
   useEffect(() => {
     // Load widget configuration from workspace or storage
@@ -219,6 +221,12 @@ const WidgetContainer: React.FC = () => {
       <ThemeManager 
         isOpen={isThemeManagerOpen} 
         onClose={() => setIsThemeManagerOpen(false)} 
+      />
+
+      <CommandPalette
+        isOpen={commandPalette.isOpen}
+        onClose={commandPalette.close}
+        setIsThemeManagerOpen={setIsThemeManagerOpen}
       />
 
       <NotificationToast
