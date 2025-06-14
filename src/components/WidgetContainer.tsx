@@ -261,13 +261,13 @@ const WidgetContainer: React.FC = () => {
       case 'notes':
         return <NotesWidget key={widget.id} widgetId={widget.id} {...commonProps} onActivity={() => trackFocusActivity('note')} />;
       case 'todo':
-        return <ToDoWidget key={widget.id} widgetId={widget.id} {...commonProps} onActivity={() => trackFocusActivity('todo')} />;
+        return <ToDoWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'timer':
-        return <TimerWidget key={widget.id} widgetId={widget.id} {...commonProps} onActivity={(duration) => trackFocusActivity('timer', duration)} />;
+        return <TimerWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'bookmark':
         return <BookmarkWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'spotify':
-        return <SpotifyWidget key={widget.id} widgetId={widget.id} {...commonProps} onActivity={() => trackFocusActivity('spotify')} />;
+        return <SpotifyWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       default:
         return null;
     }

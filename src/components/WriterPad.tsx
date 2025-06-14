@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Eye, EyeOff, Download, Copy, HelpCircle, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -280,13 +279,14 @@ Horizontal line
                 backgroundColor: 'rgba(30, 30, 30, 0.8)',
               }}
             >
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeHighlight]}
-                className="prose prose-invert prose-sm max-w-none"
-              >
-                {markdownHelp}
-              </ReactMarkdown>
+              <div className="prose prose-invert prose-sm max-w-none">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeHighlight]}
+                >
+                  {markdownHelp}
+                </ReactMarkdown>
+              </div>
             </div>
           )}
 
@@ -318,13 +318,14 @@ Horizontal line
                   backgroundColor: 'rgba(30, 30, 30, 0.5)',
                 }}
               >
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeHighlight]}
-                  className="prose prose-invert max-w-none"
-                >
-                  {content || '*Start typing to see preview...*'}
-                </ReactMarkdown>
+                <div className="prose prose-invert max-w-none">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeHighlight]}
+                  >
+                    {content || '*Start typing to see preview...*'}
+                  </ReactMarkdown>
+                </div>
               </div>
             )}
           </div>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { createEditor, Descendant, Editor, Transforms, Element as SlateElement } from 'slate';
 import { Slate, Editable, withReact, ReactEditor } from 'slate-react';
@@ -17,9 +16,10 @@ interface Note {
 interface NotesWidgetProps {
   widgetId: string;
   className?: string;
+  onActivity?: () => void;
 }
 
-const NotesWidget: React.FC<NotesWidgetProps> = ({ widgetId, className }) => {
+const NotesWidget: React.FC<NotesWidgetProps> = ({ widgetId, className, onActivity }) => {
   const [editor] = useState(() => withHistory(withReact(createEditor())));
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeNote, setActiveNote] = useState<Note | null>(null);
@@ -89,6 +89,9 @@ const NotesWidget: React.FC<NotesWidgetProps> = ({ widgetId, className }) => {
       saveNote(updatedNote);
       setActiveNote(updatedNote);
       setIsEditing(false);
+      
+      // Call onActivity when user saves a note
+      onActivity?.();
     }
   };
 
