@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { Palette } from 'lucide-react';
+import { Palette, Plugin } from 'lucide-react';
 import { toast } from 'sonner';
 import NotesWidget from './widgets/NotesWidget';
 import ToDoWidget from './widgets/ToDoWidget';
@@ -13,6 +13,7 @@ import NotificationCenter from './widgets/NotificationCenter';
 import ThemeManager from './ThemeManager';
 import NotificationToast from './NotificationToast';
 import WorkspaceManager from './WorkspaceManager';
+import PluginStore from './PluginStore';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { Notification } from '@/services/NotificationService';
@@ -23,6 +24,7 @@ import { useVoiceCommands } from '@/hooks/useVoiceCommands';
 import { createCommandRegistry } from '@/commands/commandRegistry';
 import VibeMind from './VibeMind';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
+import { usePluginSystem } from '@/hooks/usePluginSystem';
 
 interface Widget {
   id: string;
@@ -47,6 +49,15 @@ const WidgetContainer: React.FC = () => {
   const commandPalette = useCommandPalette();
   const { trackNoteActivity, trackTodoActivity, trackTimerActivity, trackSpotifyActivity } = useActivityTracker();
   const [currentFocusWidget, setCurrentFocusWidget] = useState<string>('');
+  
+  // Plugin system integration
+  const {
+    plugins,
+    isPluginStoreOpen,
+    openPluginStore,
+    closePluginStore,
+    emitActivity
+  } = usePluginSystem();
 
   useEffect(() => {
     // Load widget configuration from workspace or storage
@@ -152,7 +163,6 @@ const WidgetContainer: React.FC = () => {
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
 
-    // Update order values
     const updatedWidgets = items.map((widget, index) => ({
       ...widget,
       order: index,
@@ -160,7 +170,13 @@ const WidgetContainer: React.FC = () => {
 
     setWidgets(updatedWidgets);
 
-    // Update workspace with new widget order
+    // Emit activity for plugins
+    emitActivity({
+      type: 'widget-reorder',
+      timestamp: new Date().toISOString(),
+      data: { widgets: updatedWidgets }
+    });
+
     if (currentWorkspace && updateWorkspace) {
       const activeWidgets = updatedWidgets.map(w => w.id);
       await updateWorkspace(currentWorkspace.id, { activeWidgets });
@@ -197,9 +213,9 @@ const WidgetContainer: React.FC = () => {
 
   const commands = useMemo(() => {
     return createCommandRegistry({
-      switchWorkspace,
-      createWorkspace,
-      workspaces,
+      switchWorkspace: switchWorkspace || (() => {}),
+      createWorkspace: createWorkspace || (() => {}),
+      workspaces: workspaces || [],
       setIsThemeManagerOpen,
     });
   }, [workspaces, switchWorkspace, createWorkspace, setIsThemeManagerOpen]);
@@ -214,6 +230,13 @@ const WidgetContainer: React.FC = () => {
       try {
         command.action();
         toast.success(`Voice command executed: ${command.label}`);
+        
+        // Emit activity for plugins
+        emitActivity({
+          type: 'voice-command',
+          timestamp: new Date().toISOString(),
+          data: { command: command.label, transcript }
+        });
       } catch (error) {
         console.error('Voice command execution failed:', error);
         toast.error('Failed to execute voice command');
@@ -240,7 +263,19 @@ const WidgetContainer: React.FC = () => {
       <VibeMind currentWidget={currentFocusWidget} />
 
       {/* Theme Toggle Button */}
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end mb-4 gap-2">
+        <button
+          onClick={openPluginStore}
+          className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
+          style={{ 
+            backgroundColor: 'var(--theme-surface)',
+            color: 'var(--theme-accent)',
+            border: `1px solid var(--theme-border)`
+          }}
+          title="Plugin Store"
+        >
+          <Plugin className="w-5 h-5" />
+        </button>
         <button
           onClick={() => setIsThemeManagerOpen(true)}
           className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
@@ -314,6 +349,11 @@ const WidgetContainer: React.FC = () => {
       <ThemeManager 
         isOpen={isThemeManagerOpen} 
         onClose={() => setIsThemeManagerOpen(false)} 
+      />
+
+      <PluginStore
+        isOpen={isPluginStoreOpen}
+        onClose={closePluginStore}
       />
 
       <CommandPalette
