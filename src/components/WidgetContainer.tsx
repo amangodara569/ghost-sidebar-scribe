@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { Palette, Plug, Bell } from 'lucide-react';
+import { Palette, Plug, Bell, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import SidebarOverlay from './SidebarOverlay';
@@ -16,6 +16,7 @@ import ThemeManager from './ThemeManager';
 import NotificationToast from './NotificationToast';
 import WorkspaceManager from './WorkspaceManager';
 import PluginStore from './PluginStore';
+import SettingsPanel from './SettingsPanel';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { Notification } from '@/services/NotificationService';
@@ -49,6 +50,7 @@ const WidgetContainer: React.FC = () => {
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [isThemeManagerOpen, setIsThemeManagerOpen] = useState(false);
   const [isNotificationManagerOpen, setIsNotificationManagerOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentToast, setCurrentToast] = useState<any>(null);
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
@@ -91,6 +93,10 @@ const WidgetContainer: React.FC = () => {
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'T') {
         event.preventDefault();
         setIsThemeManagerOpen(prev => !prev);
+      }
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'S') {
+        event.preventDefault();
+        setIsSettingsOpen(prev => !prev);
       }
     };
 
@@ -357,6 +363,20 @@ const WidgetContainer: React.FC = () => {
           >
             <Plug className="w-4 h-4" />
           </Button>
+
+          <Button
+            onClick={() => setIsSettingsOpen(true)}
+            className="sidebar-button"
+            style={{ 
+              backgroundColor: 'var(--theme-surface)',
+              color: 'var(--theme-accent)',
+              border: `1px solid var(--theme-border)`
+            }}
+            title="Settings (Ctrl+Shift+S)"
+            aria-label="Open Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </Button>
           
           <Button
             onClick={() => setIsThemeManagerOpen(true)}
@@ -385,7 +405,7 @@ const WidgetContainer: React.FC = () => {
             <VoiceController
               isEnabled={isVoiceEnabled}
               onToggleEnabled={setIsVoiceEnabled}
-              onVoiceCommand={handleVoiceCommand}
+              onVoiceCommand={() => {}}
             />
           </div>
         </div>
@@ -431,6 +451,12 @@ const WidgetContainer: React.FC = () => {
             )}
           </Droppable>
         </DragDropContext>
+
+        {/* Settings Panel */}
+        <SettingsPanel
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+        />
 
         {/* Notification Toast */}
         <NotificationToast

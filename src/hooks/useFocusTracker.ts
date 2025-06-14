@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { toast } from 'sonner';
@@ -112,8 +113,8 @@ export const useFocusTracker = () => {
     }, IDLE_THRESHOLD);
   }, [setFocusData, isNudgesEnabled]);
 
-  // Track specific activities
-  const trackActivity = useCallback((type: 'timer' | 'note' | 'todo' | 'spotify', value: number = 1) => {
+  // Track specific activities - renamed from trackActivity to trackFocusActivity
+  const trackFocusActivity = useCallback((type: 'timer' | 'note' | 'todo' | 'spotify', value: number = 1) => {
     setCurrentSession(prev => ({
       ...prev,
       [`${type}Activity`]: prev[`${type}Activity` as keyof ActivitySession] + value
@@ -173,7 +174,7 @@ export const useFocusTracker = () => {
   useEffect(() => {
     const handleActivityEvent = (event: CustomEvent) => {
       const { type, value } = event.detail;
-      trackActivity(type, value);
+      trackFocusActivity(type, value);
     };
 
     window.addEventListener('focus:activity', handleActivityEvent as EventListener);
@@ -181,7 +182,7 @@ export const useFocusTracker = () => {
     return () => {
       window.removeEventListener('focus:activity', handleActivityEvent as EventListener);
     };
-  }, [trackActivity]);
+  }, [trackFocusActivity]);
 
   // Setup activity listeners
   useEffect(() => {
@@ -254,7 +255,7 @@ export const useFocusTracker = () => {
 
   return {
     focusData,
-    trackActivity,
+    trackFocusActivity,
     getFocusReport,
     isNudgesEnabled,
     setIsNudgesEnabled,
