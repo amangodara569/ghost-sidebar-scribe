@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Minimize, Maximize2, GripHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -53,9 +52,59 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [resizeStart, setResizeStart] = useState({ bounds: bounds, mouse: { x: 0, y: 0 } });
   
+  // Smooth dragging state
+  const [currentPos, setCurrentPos] = useState({ x: bounds.x, y: bounds.y });
+  const [targetPos, setTargetPos] = useState({ x: bounds.x, y: bounds.y });
+  const animationFrameRef = useRef<number>();
+  
   const sidebarRef = useRef<HTMLDivElement>(null);
   const minimizedTabRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Smooth animation loop for dragging
+  const animateDrag = useCallback(() => {
+    setCurrentPos(prev => {
+      const easing = 0.15; // Smooth easing factor
+      const newX = prev.x + (targetPos.x - prev.x) * easing;
+      const newY = prev.y + (targetPos.y - prev.y) * easing;
+      
+      // Stop animation when close enough to target
+      const threshold = 0.1;
+      if (Math.abs(targetPos.x - newX) < threshold && Math.abs(targetPos.y - newY) < threshold) {
+        return { x: targetPos.x, y: targetPos.y };
+      }
+      
+      return { x: newX, y: newY };
+    });
+    
+    if (isDragging) {
+      animationFrameRef.current = requestAnimationFrame(animateDrag);
+    }
+  }, [isDragging, targetPos]);
+
+  // Start animation loop when dragging starts
+  useEffect(() => {
+    if (isDragging) {
+      animationFrameRef.current = requestAnimationFrame(animateDrag);
+    } else {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    }
+    
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [isDragging, animateDrag]);
+
+  // Update bounds when current position changes during drag
+  useEffect(() => {
+    if (isDragging) {
+      setBounds(prev => ({ ...prev, x: currentPos.x, y: currentPos.y }));
+    }
+  }, [currentPos, isDragging, setBounds]);
 
   // Constrain bounds to screen
   const constrainBounds = useCallback((newBounds: WindowBounds): WindowBounds => {
@@ -138,6 +187,7 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
         });
       }
       document.body.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
     }
   }, [isMinimized]);
 
@@ -165,8 +215,8 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
       const newX = e.clientX - dragOffset.x;
       const newY = e.clientY - dragOffset.y;
       
-      const newBounds = constrainBounds({ ...bounds, x: newX, y: newY });
-      setBounds(newBounds);
+      const constrainedBounds = constrainBounds({ ...bounds, x: newX, y: newY });
+      setTargetPos({ x: constrainedBounds.x, y: constrainedBounds.y });
     } else if (isResizing) {
       e.preventDefault();
       const deltaX = e.clientX - resizeStart.mouse.x;
@@ -220,21 +270,24 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
       setIsDragging(false);
       setIsResizing(null);
       document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      
+      // Snap final position to bounds
+      if (isDragging) {
+        setCurrentPos({ x: targetPos.x, y: targetPos.y });
+      }
     }
-  }, [isDragging, isResizing]);
+  }, [isDragging, isResizing, targetPos]);
 
   // Mouse event listeners
   useEffect(() => {
     if (isDragging || isResizing) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
-      document.body.style.userSelect = 'none';
       
       return () => {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
-        document.body.style.userSelect = '';
-        document.body.style.cursor = '';
       };
     }
   }, [isDragging, isResizing, handleMouseMove, handleMouseUp]);
@@ -242,12 +295,23 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
   // Handle window resize
   useEffect(() => {
     const handleWindowResize = () => {
-      setBounds(constrainBounds(bounds));
+      const constrainedBounds = constrainBounds(bounds);
+      setBounds(constrainedBounds);
+      setCurrentPos({ x: constrainedBounds.x, y: constrainedBounds.y });
+      setTargetPos({ x: constrainedBounds.x, y: constrainedBounds.y });
     };
 
     window.addEventListener('resize', handleWindowResize);
     return () => window.removeEventListener('resize', handleWindowResize);
   }, [bounds, constrainBounds, setBounds]);
+
+  // Sync positions when not dragging
+  useEffect(() => {
+    if (!isDragging) {
+      setCurrentPos({ x: bounds.x, y: bounds.y });
+      setTargetPos({ x: bounds.x, y: bounds.y });
+    }
+  }, [bounds.x, bounds.y, isDragging]);
 
   // Minimize/restore functions
   const handleMinimize = () => setIsMinimized(true);
@@ -290,8 +354,8 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
               ref={sidebarRef}
               className="fixed z-50 floating-sidebar overflow-hidden select-none theme-transition"
               style={{
-                left: bounds.x,
-                top: bounds.y,
+                left: currentPos.x,
+                top: currentPos.y,
                 width: bounds.width,
                 height: bounds.height,
                 cursor: isDragging ? 'grabbing' : 'default'
