@@ -63,11 +63,22 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				// Custom dark-grey palette for overlay
+				// Professional transparent overlay theme
 				overlay: {
-					DEFAULT: 'rgba(30, 30, 30, 0.85)',
-					light: 'rgba(40, 40, 40, 0.9)',
-					dark: 'rgba(20, 20, 20, 0.95)',
+					DEFAULT: 'rgba(30, 30, 30, 0.35)',
+					panel: 'rgba(40, 40, 40, 0.25)',
+					panelHover: 'rgba(40, 40, 40, 0.35)',
+					border: 'rgba(255, 255, 255, 0.05)',
+				},
+				text: {
+					primary: 'rgba(255, 255, 255, 0.7)',
+					secondary: 'rgba(255, 255, 255, 0.5)',
+					muted: 'rgba(255, 255, 255, 0.4)',
+				},
+				accent: {
+					DEFAULT: 'rgba(90, 126, 173, 0.5)',
+					hover: 'rgba(90, 126, 173, 0.7)',
+					subtle: 'rgba(90, 126, 173, 0.3)',
 				},
 				glass: {
 					DEFAULT: 'rgba(255, 255, 255, 0.1)',
