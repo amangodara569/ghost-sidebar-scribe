@@ -1,172 +1,216 @@
-
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { motion } from 'framer-motion';
+import { X, Download, Trash2, Settings, Plug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Plug, Download, Settings, Trash2, Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { usePluginSystem } from '@/hooks/usePluginSystem';
-import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
-interface Plugin {
-  id: string;
+interface PluginConfig {
   name: string;
-  description: string;
   author: string;
+  description: string;
   version: string;
+  type: 'widget' | 'theme' | 'tool';
+  entryPoint?: string;
+}
+
+interface PluginInstance {
+  config: PluginConfig;
   enabled: boolean;
 }
 
-const PluginStore: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const { plugins, loadPlugin, unloadPlugin, togglePlugin } = usePluginSystem();
-
-  const handleInstall = async (pluginPath: string) => {
-    const success = await loadPlugin(pluginPath);
-    if (success) {
-      toast.success('Plugin installed successfully!');
-    } else {
-      toast.error('Failed to install plugin.');
-    }
-  };
-
-  const handleUninstall = async (pluginId: string) => {
-    const success = await unloadPlugin(pluginId);
-    if (success) {
-      toast.success('Plugin uninstalled successfully!');
-    } else {
-      toast.error('Failed to uninstall plugin.');
-    }
-  };
-
-  const handleToggle = (pluginId: string) => {
-    const enabled = togglePlugin(pluginId);
-    toast.success(`Plugin ${enabled ? 'enabled' : 'disabled'}!`);
-  };
-
-  const filteredPlugins = plugins.filter(plugin =>
-    plugin.config?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    plugin.config?.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const availablePlugins: Plugin[] = [
-    {
-      id: 'example-plugin',
-      name: 'Example Plugin',
-      description: 'A sample plugin to demonstrate the plugin system.',
-      author: 'Lovable',
+const examplePlugins: PluginInstance[] = [
+  {
+    config: {
+      name: 'Pomodoro Timer',
+      author: 'Vibe Studio',
+      description: 'A simple pomodoro timer widget',
       version: '1.0.0',
-      enabled: false,
+      type: 'widget',
     },
-    {
-      id: 'another-plugin',
-      name: 'Another Plugin',
-      description: 'Another sample plugin to showcase different functionalities.',
-      author: 'Lovable',
-      version: '0.5.0',
-      enabled: false,
+    enabled: true,
+  },
+  {
+    config: {
+      name: 'Dark Theme',
+      author: 'Vibe Studio',
+      description: 'A sleek dark theme for the sidebar',
+      version: '1.0.0',
+      type: 'theme',
     },
-  ];
+    enabled: false,
+  },
+  {
+    config: {
+      name: 'Note Exporter',
+      author: 'Vibe Studio',
+      description: 'Export your notes to various formats',
+      version: '1.0.0',
+      type: 'tool',
+    },
+    enabled: false,
+  },
+];
+
+interface PluginStoreProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const PluginStore: React.FC<PluginStoreProps> = ({ isOpen, onClose }) => {
+  const [installedPlugins, setInstalledPlugins] = useState<PluginInstance[]>([]);
+  const [availablePlugins] = useState<PluginInstance[]>(examplePlugins);
+
+  const installPlugin = (plugin: PluginInstance) => {
+    setInstalledPlugins(prev => [...prev, { ...plugin, enabled: true }]);
+  };
+
+  const uninstallPlugin = (pluginName: string) => {
+    setInstalledPlugins(prev => prev.filter(p => p.config.name !== pluginName));
+  };
+
+  const togglePlugin = (pluginName: string) => {
+    setInstalledPlugins(prev => 
+      prev.map(p => 
+        p.config.name === pluginName ? { ...p, enabled: !p.enabled } : p
+      )
+    );
+  };
+
+  if (!isOpen) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[625px]">
-        <DialogHeader>
-          <DialogTitle>Plugin Store</DialogTitle>
-        </DialogHeader>
-
-        <div className="mb-4 flex items-center space-x-2">
-          <Search className="w-4 h-4 text-gray-500" />
-          <Input
-            type="search"
-            placeholder="Search plugins..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-blue-500"
-          />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="w-full max-w-4xl h-[80vh] rounded-lg border shadow-2xl overflow-hidden"
+        style={{
+          backgroundColor: 'var(--theme-surface)',
+          borderColor: 'var(--theme-border)'
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'var(--theme-border)' }}>
+          <div className="flex items-center gap-3">
+            <Plug className="w-6 h-6" style={{ color: 'var(--theme-accent)' }} />
+            <h2 className="text-xl font-semibold" style={{ color: 'var(--theme-text)' }}>
+              Plugin Store
+            </h2>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="w-4 h-4" />
+          </Button>
         </div>
 
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-          {filteredPlugins.map((plugin) => (
-            <Card key={plugin.config?.id || plugin.id} className="bg-gray-900 border-gray-700">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-medium text-gray-100">
-                    {plugin.config?.name || 'Unknown Plugin'}
-                  </CardTitle>
-                  <Badge variant="secondary">{plugin.config?.version || '1.0.0'}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="text-sm text-gray-400 space-y-1">
-                <p>{plugin.config?.description || 'No description available'}</p>
-                <p>Author: {plugin.config?.author || 'Unknown'}</p>
-                <div className="flex items-center justify-between">
-                  <label htmlFor={`plugin-toggle-${plugin.config?.id || plugin.id}`} className="text-gray-200">
-                    {plugin.enabled ? 'Enabled' : 'Disabled'}
-                  </label>
-                  <Switch
-                    id={`plugin-toggle-${plugin.config?.id || plugin.id}`}
-                    checked={plugin.enabled}
-                    onCheckedChange={() => handleToggle(plugin.config?.id || plugin.id)}
-                  />
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600"
-                    onClick={() => handleUninstall(plugin.config?.id || plugin.id)}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Uninstall
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Settings className="w-4 h-4 mr-2" />
-                    Settings
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-
-          {availablePlugins
-            .filter(plugin => !plugins.find(p => p.config?.id === plugin.id))
-            .map((plugin) => (
-              <Card key={plugin.id} className="bg-gray-900 border-gray-700">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-medium text-gray-100">{plugin.name}</CardTitle>
-                    <Badge variant="secondary">{plugin.version}</Badge>
+        <div className="flex h-full">
+          {/* Installed Plugins */}
+          <div className="w-1/2 p-6 border-r" style={{ borderColor: 'var(--theme-border)' }}>
+            <h3 className="text-lg font-medium mb-4" style={{ color: 'var(--theme-text)' }}>
+              Installed Plugins
+            </h3>
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+              {installedPlugins.map((plugin) => (
+                <div
+                  key={plugin.config.name}
+                  className="p-4 rounded-lg border"
+                  style={{
+                    backgroundColor: 'var(--theme-background)',
+                    borderColor: 'var(--theme-border)'
+                  }}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <h4 className="font-medium" style={{ color: 'var(--theme-text)' }}>
+                        {plugin.config.name}
+                      </h4>
+                      <p className="text-sm opacity-70" style={{ color: 'var(--theme-text)' }}>
+                        by {plugin.config.author}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={plugin.enabled}
+                      onCheckedChange={() => togglePlugin(plugin.config.name)}
+                    />
                   </div>
-                </CardHeader>
-                <CardContent className="text-sm text-gray-400 space-y-1">
-                  <p>{plugin.description}</p>
-                  <p>Author: {plugin.author}</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700 text-gray-100"
-                    onClick={() => handleInstall(plugin.id)}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Install
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-        </div>
+                  <p className="text-sm mb-3 opacity-80" style={{ color: 'var(--theme-text)' }}>
+                    {plugin.config.description}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <Badge variant="outline">{plugin.config.type}</Badge>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => uninstallPlugin(plugin.config.name)}
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {installedPlugins.length === 0 && (
+                <div className="text-center py-8 opacity-50" style={{ color: 'var(--theme-text)' }}>
+                  No plugins installed yet
+                </div>
+              )}
+            </div>
+          </div>
 
-        <Button variant="secondary" onClick={onClose} className="mt-4">
-          Close
-        </Button>
-      </DialogContent>
-    </Dialog>
+          {/* Available Plugins */}
+          <div className="w-1/2 p-6">
+            <h3 className="text-lg font-medium mb-4" style={{ color: 'var(--theme-text)' }}>
+              Available Plugins
+            </h3>
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+              {availablePlugins
+                .filter(plugin => !installedPlugins.some(installed => installed.config.name === plugin.config.name))
+                .map((plugin) => (
+                  <div
+                    key={plugin.config.name}
+                    className="p-4 rounded-lg border"
+                    style={{
+                      backgroundColor: 'var(--theme-background)',
+                      borderColor: 'var(--theme-border)'
+                    }}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h4 className="font-medium" style={{ color: 'var(--theme-text)' }}>
+                          {plugin.config.name}
+                        </h4>
+                        <p className="text-sm opacity-70" style={{ color: 'var(--theme-text)' }}>
+                          by {plugin.config.author}
+                        </p>
+                      </div>
+                      <Badge variant="outline">{plugin.config.type}</Badge>
+                    </div>
+                    <p className="text-sm mb-3 opacity-80" style={{ color: 'var(--theme-text)' }}>
+                      {plugin.config.description}
+                    </p>
+                    <Button
+                      onClick={() => installPlugin(plugin)}
+                      size="sm"
+                      className="w-full"
+                    >
+                      <Download className="w-3 h-3 mr-1" />
+                      Install
+                    </Button>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 };
 

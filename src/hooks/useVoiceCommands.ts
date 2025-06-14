@@ -1,52 +1,29 @@
 
 import { useMemo } from 'react';
 import { Command } from '@/commands/commandRegistry';
+import { voiceEngine } from '@/services/VoiceEngine';
 
 export const useVoiceCommands = (commands: Command[]) => {
   const voiceCommandMap = useMemo(() => {
     const map: Record<string, Command> = {};
     
     commands.forEach(command => {
+      // Register with voice engine
+      voiceEngine.registerCommand({
+        pattern: new RegExp(command.label.toLowerCase().replace(/\s+/g, '\\s+'), 'i'),
+        action: command.id,
+        handler: () => command.action(),
+        description: command.label
+      });
+
       // Create voice patterns for each command
       const patterns = [
         command.label.toLowerCase(),
         ...command.keywords.map(k => k.toLowerCase()),
       ];
       
-      // Add common voice variations
       patterns.forEach(pattern => {
         map[pattern] = command;
-        
-        // Add variations for common voice commands
-        if (pattern.includes('create') && pattern.includes('note')) {
-          map['new note'] = command;
-          map['add note'] = command;
-          map['make a note'] = command;
-        }
-        
-        if (pattern.includes('timer')) {
-          map['start timer'] = command;
-          map['begin timer'] = command;
-          map['set timer'] = command;
-        }
-        
-        if (pattern.includes('music') || pattern.includes('spotify')) {
-          map['play music'] = command;
-          map['start music'] = command;
-          map['pause music'] = command;
-          map['stop music'] = command;
-        }
-        
-        if (pattern.includes('workspace')) {
-          map['switch workspace'] = command;
-          map['change workspace'] = command;
-        }
-        
-        if (pattern.includes('sync')) {
-          map['sync now'] = command;
-          map['synchronize'] = command;
-          map['backup now'] = command;
-        }
       });
     });
     
@@ -61,7 +38,7 @@ export const useVoiceCommands = (commands: Command[]) => {
       return voiceCommandMap[cleanTranscript];
     }
     
-    // Fuzzy matching - find commands that contain key words from transcript
+    // Fuzzy matching
     const words = cleanTranscript.split(' ');
     
     for (const [pattern, command] of Object.entries(voiceCommandMap)) {
@@ -70,7 +47,6 @@ export const useVoiceCommands = (commands: Command[]) => {
         patternWords.some(pWord => pWord.includes(word) || word.includes(pWord))
       ).length;
       
-      // If more than half the words match, consider it a match
       if (matchCount > 0 && matchCount >= Math.min(words.length, patternWords.length) * 0.5) {
         return command;
       }
