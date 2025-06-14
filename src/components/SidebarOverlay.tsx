@@ -4,6 +4,7 @@ import { X, Minimize, Maximize2, GripHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useToast } from '@/hooks/use-toast';
 
 interface SidebarOverlayProps {
   children: React.ReactNode;
@@ -54,6 +55,7 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
   
   const sidebarRef = useRef<HTMLDivElement>(null);
   const minimizedTabRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   // Constrain bounds to screen
   const constrainBounds = useCallback((newBounds: WindowBounds): WindowBounds => {
@@ -68,9 +70,34 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
     };
   }, []);
 
-  // Enhanced keyboard handling
+  // Global hotkey handler
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Global hotkey: Ctrl + Shift + Space
+      if (event.ctrlKey && event.shiftKey && event.code === 'Space') {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        if (isVisible) {
+          // Hide sidebar and show toast
+          onToggleVisibility();
+          toast({
+            title: "Sidebar Hidden",
+            description: "Press Ctrl+Shift+Space to bring back",
+            duration: 3000,
+          });
+        } else {
+          // Show sidebar
+          onToggleVisibility();
+          // If minimized, restore it
+          if (isMinimized) {
+            setIsMinimized(false);
+          }
+        }
+        return;
+      }
+      
+      // Legacy hotkey for backward compatibility
       if ((event.ctrlKey || event.metaKey) && event.key === '`') {
         event.preventDefault();
         if (isMinimized) {
@@ -80,14 +107,16 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
         }
       }
       
+      // Escape to minimize
       if (event.key === 'Escape' && isVisible && !isMinimized) {
         setIsMinimized(true);
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onToggleVisibility, isVisible, isMinimized]);
+    // Add event listener to document for global capture
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [onToggleVisibility, isVisible, isMinimized, toast]);
 
   // Drag functionality
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -305,6 +334,9 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
                   </div>
                   <span className="text-sm font-semibold ml-2" style={{ color: 'var(--theme-text)' }}>
                     VibeMind
+                  </span>
+                  <span className="text-xs opacity-60 ml-1" style={{ color: 'var(--theme-text-secondary)' }}>
+                    Ctrl+Shift+Space
                   </span>
                 </div>
                 
