@@ -39,10 +39,11 @@ import StickyNotesWidget from './widgets/StickyNotesWidget';
 import FocusTrackerWidget from './widgets/FocusTrackerWidget';
 import { useFocusTracker } from '@/hooks/useFocusTracker';
 import WriterPad from './WriterPad';
+import WebsiteShortcutsWidget from './widgets/WebsiteShortcutsWidget';
 
 interface Widget {
   id: string;
-  type: 'notes' | 'todo' | 'timer' | 'bookmark' | 'spotify' | 'analytics' | 'freespace' | 'notifications' | 'insights' | 'scratchpad' | 'stickynotes' | 'focustracker';
+  type: 'notes' | 'todo' | 'timer' | 'bookmark' | 'spotify' | 'analytics' | 'freespace' | 'notifications' | 'insights' | 'scratchpad' | 'stickynotes' | 'focustracker' | 'shortcuts';
   order: number;
   enabled: boolean;
 }
@@ -198,15 +199,16 @@ const WidgetContainer: React.FC = () => {
     { id: 'notifications-1', type: 'notifications', order: 0, enabled: true },
     { id: 'focustracker-1', type: 'focustracker', order: 1, enabled: true },
     { id: 'insights-1', type: 'insights', order: 2, enabled: true },
-    { id: 'stickynotes-1', type: 'stickynotes', order: 3, enabled: true },
-    { id: 'scratchpad-1', type: 'scratchpad', order: 4, enabled: true },
-    { id: 'analytics-1', type: 'analytics', order: 5, enabled: true },
-    { id: 'freespace-1', type: 'freespace', order: 6, enabled: true },
-    { id: 'notes-1', type: 'notes', order: 7, enabled: true },
-    { id: 'todo-1', type: 'todo', order: 8, enabled: true },
-    { id: 'timer-1', type: 'timer', order: 9, enabled: true },
-    { id: 'bookmark-1', type: 'bookmark', order: 10, enabled: true },
-    { id: 'spotify-1', type: 'spotify', order: 11, enabled: true },
+    { id: 'shortcuts-1', type: 'shortcuts', order: 3, enabled: true },
+    { id: 'stickynotes-1', type: 'stickynotes', order: 4, enabled: true },
+    { id: 'scratchpad-1', type: 'scratchpad', order: 5, enabled: true },
+    { id: 'analytics-1', type: 'analytics', order: 6, enabled: true },
+    { id: 'freespace-1', type: 'freespace', order: 7, enabled: true },
+    { id: 'notes-1', type: 'notes', order: 8, enabled: true },
+    { id: 'todo-1', type: 'todo', order: 9, enabled: true },
+    { id: 'timer-1', type: 'timer', order: 10, enabled: true },
+    { id: 'bookmark-1', type: 'bookmark', order: 11, enabled: true },
+    { id: 'spotify-1', type: 'spotify', order: 12, enabled: true },
   ];
 
   const handleDragEnd = async (result: DropResult) => {
@@ -250,6 +252,8 @@ const WidgetContainer: React.FC = () => {
         return <FocusTrackerWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'insights':
         return <InsightsDashboard key={widget.id} widgetId={widget.id} {...commonProps} />;
+      case 'shortcuts':
+        return <WebsiteShortcutsWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'stickynotes':
         return <StickyNotesWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'scratchpad':
