@@ -1,84 +1,91 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { notificationEngine, SmartNotification, NotificationSettings } from '@/services/NotificationEngine';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  timestamp: number;
+  read: boolean;
+  priority: 'low' | 'medium' | 'high';
+}
+
+interface NotificationSettings {
+  enabled: boolean;
+  maxNotifications: number;
+  autoMarkRead: boolean;
+  showToasts: boolean;
+}
 
 export const useNotifications = () => {
-  const [notifications, setNotifications] = useState<SmartNotification[]>([]);
-  const [settings, setSettings] = useState<NotificationSettings>(notificationEngine.getSettings());
-  const [pendingCount, setPendingCount] = useState(0);
+  const [notifications, setNotifications] = useLocalStorage<Notification[]>('notifications', []);
+  const [settings, setSettings] = useLocalStorage<NotificationSettings>('notification-settings', {
+    enabled: true,
+    maxNotifications: 50,
+    autoMarkRead: true,
+    showToasts: true
+  });
 
-  useEffect(() => {
-    // Load initial data
-    setNotifications(notificationEngine.getNotifications());
-    setPendingCount(notificationEngine.getPendingCount());
+  const addNotification = useCallback((notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
+    if (!settings.enabled) return;
 
-    // Listen for notification updates
-    const handleNotificationUpdate = () => {
-      setNotifications(notificationEngine.getNotifications());
-      setPendingCount(notificationEngine.getPendingCount());
+    const newNotification: Notification = {
+      ...notification,
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      read: false
     };
 
-    // Set up periodic refresh
-    const interval = setInterval(handleNotificationUpdate, 30000); // Every 30 seconds
+    setNotifications(prev => {
+      const updated = [newNotification, ...prev];
+      return updated.slice(0, settings.maxNotifications);
+    });
 
-    return () => clearInterval(interval);
-  }, []);
+    // Dispatch event for toast display
+    if (settings.showToasts) {
+      window.dispatchEvent(new CustomEvent('notification:delivered', { 
+        detail: newNotification 
+      }));
+    }
+  }, [settings, setNotifications]);
 
-  const scheduleReminder = useCallback((todoId: string, title: string, dueDate: Date, reminderMinutes?: number) => {
-    return notificationEngine.scheduleReminder(todoId, title, dueDate, reminderMinutes);
-  }, []);
+  const markAsRead = useCallback((id: string) => {
+    setNotifications(prev => 
+      prev.map(notif => 
+        notif.id === id ? { ...notif, read: true } : notif
+      )
+    );
+  }, [setNotifications]);
 
-  const scheduleTimerAlert = useCallback((type: 'work-end' | 'break-end', duration: number) => {
-    return notificationEngine.scheduleTimerAlert(type, duration);
-  }, []);
-
-  const scheduleAINudge = useCallback((message: string, priority?: 'low' | 'medium' | 'high', delayMinutes?: number) => {
-    return notificationEngine.scheduleAINudge(message, priority, delayMinutes);
-  }, []);
-
-  const scheduleSpotifyAlert = useCallback((message: string, delayMinutes?: number) => {
-    return notificationEngine.scheduleSpotifyAlert(message, delayMinutes);
-  }, []);
-
-  const snoozeNotification = useCallback((id: string, minutes: number) => {
-    notificationEngine.snoozeNotification(id, minutes);
-    setNotifications(notificationEngine.getNotifications());
-    setPendingCount(notificationEngine.getPendingCount());
-  }, []);
-
-  const dismissNotification = useCallback((id: string) => {
-    notificationEngine.dismissNotification(id);
-    setNotifications(notificationEngine.getNotifications());
-    setPendingCount(notificationEngine.getPendingCount());
-  }, []);
+  const markAllAsRead = useCallback(() => {
+    setNotifications(prev => 
+      prev.map(notif => ({ ...notif, read: true }))
+    );
+  }, [setNotifications]);
 
   const deleteNotification = useCallback((id: string) => {
-    notificationEngine.deleteNotification(id);
-    setNotifications(notificationEngine.getNotifications());
-    setPendingCount(notificationEngine.getPendingCount());
-  }, []);
+    setNotifications(prev => prev.filter(notif => notif.id !== id));
+  }, [setNotifications]);
 
-  const updateSettings = useCallback((newSettings: Partial<NotificationSettings>) => {
-    notificationEngine.updateSettings(newSettings);
-    setSettings(notificationEngine.getSettings());
-  }, []);
+  const clearAll = useCallback(() => {
+    setNotifications([]);
+  }, [setNotifications]);
 
-  const requestPermission = useCallback(() => {
-    return notificationEngine.requestPermission();
-  }, []);
+  const pendingCount = notifications.filter(n => !n.read).length;
+  const unreadHighPriority = notifications.filter(n => !n.read && n.priority === 'high').length;
 
   return {
     notifications,
     settings,
-    pendingCount,
-    scheduleReminder,
-    scheduleTimerAlert,
-    scheduleAINudge,
-    scheduleSpotifyAlert,
-    snoozeNotification,
-    dismissNotification,
+    addNotification,
+    markAsRead,
+    markAllAsRead,
     deleteNotification,
-    updateSettings,
-    requestPermission,
+    clearAll,
+    pendingCount,
+    unreadHighPriority,
+    updateSettings: setSettings
   };
 };

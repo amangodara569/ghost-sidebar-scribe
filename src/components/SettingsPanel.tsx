@@ -583,6 +583,29 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
               </AccordionContent>
             </AccordionItem>
 
+            {/* Data Management */}
+            <AccordionItem value="data">
+              <AccordionTrigger className="text-white hover:text-gray-300">
+                <div className="flex items-center gap-2">
+                  <Cloud className="w-4 h-4" />
+                  Data Management
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Button onClick={exportData} variant="outline" className="w-full">
+                    Export Settings (JSON)
+                  </Button>
+                  <Button onClick={resetAllSettings} variant="outline" className="w-full">
+                    Reset to Defaults
+                  </Button>
+                  <Button onClick={clearAllData} variant="destructive" className="w-full">
+                    Clear All Data
+                  </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
             {/* Sticky Notes Settings */}
             <AccordionItem value="notes">
               <AccordionTrigger className="text-white hover:text-gray-300">
