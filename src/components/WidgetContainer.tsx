@@ -9,12 +9,15 @@ import BookmarkWidget from './widgets/BookmarkWidget';
 import SpotifyWidget from './widgets/SpotifyWidget';
 import LiveAnalyticsWidget from './widgets/LiveAnalyticsWidget';
 import FreeSpaceWidget from './widgets/FreeSpaceWidget';
+import NotificationCenter from './widgets/NotificationCenter';
 import ThemeManager from './ThemeManager';
+import NotificationToast from './NotificationToast';
 import { useTheme } from '@/contexts/ThemeContext';
+import { Notification } from '@/services/NotificationService';
 
 interface Widget {
   id: string;
-  type: 'notes' | 'todo' | 'timer' | 'bookmark' | 'spotify' | 'analytics' | 'freespace';
+  type: 'notes' | 'todo' | 'timer' | 'bookmark' | 'spotify' | 'analytics' | 'freespace' | 'notifications';
   order: number;
   enabled: boolean;
 }
@@ -22,6 +25,7 @@ interface Widget {
 const WidgetContainer: React.FC = () => {
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [isThemeManagerOpen, setIsThemeManagerOpen] = useState(false);
+  const [currentToast, setCurrentToast] = useState<Notification | null>(null);
   const { currentTheme, isCustom } = useTheme();
 
   useEffect(() => {
@@ -42,6 +46,16 @@ const WidgetContainer: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Listen for notification deliveries
+  useEffect(() => {
+    const handleNotificationDelivered = (event: CustomEvent<Notification>) => {
+      setCurrentToast(event.detail);
+    };
+
+    window.addEventListener('notification:delivered', handleNotificationDelivered as EventListener);
+    return () => window.removeEventListener('notification:delivered', handleNotificationDelivered as EventListener);
+  }, []);
+
   const loadWidgets = async () => {
     try {
       // Use IPC to get widgets from storage
@@ -58,13 +72,14 @@ const WidgetContainer: React.FC = () => {
   };
 
   const getDefaultWidgets = (): Widget[] => [
-    { id: 'analytics-1', type: 'analytics', order: 0, enabled: true },
-    { id: 'freespace-1', type: 'freespace', order: 1, enabled: true },
-    { id: 'notes-1', type: 'notes', order: 2, enabled: true },
-    { id: 'todo-1', type: 'todo', order: 3, enabled: true },
-    { id: 'timer-1', type: 'timer', order: 4, enabled: true },
-    { id: 'bookmark-1', type: 'bookmark', order: 5, enabled: true },
-    { id: 'spotify-1', type: 'spotify', order: 6, enabled: true },
+    { id: 'notifications-1', type: 'notifications', order: 0, enabled: true },
+    { id: 'analytics-1', type: 'analytics', order: 1, enabled: true },
+    { id: 'freespace-1', type: 'freespace', order: 2, enabled: true },
+    { id: 'notes-1', type: 'notes', order: 3, enabled: true },
+    { id: 'todo-1', type: 'todo', order: 4, enabled: true },
+    { id: 'timer-1', type: 'timer', order: 5, enabled: true },
+    { id: 'bookmark-1', type: 'bookmark', order: 6, enabled: true },
+    { id: 'spotify-1', type: 'spotify', order: 7, enabled: true },
   ];
 
   const handleDragEnd = async (result: DropResult) => {
@@ -94,6 +109,8 @@ const WidgetContainer: React.FC = () => {
 
   const renderWidget = (widget: Widget) => {
     switch (widget.type) {
+      case 'notifications':
+        return <NotificationCenter key={widget.id} widgetId={widget.id} />;
       case 'analytics':
         return <LiveAnalyticsWidget key={widget.id} widgetId={widget.id} />;
       case 'freespace':
@@ -179,6 +196,11 @@ const WidgetContainer: React.FC = () => {
       <ThemeManager 
         isOpen={isThemeManagerOpen} 
         onClose={() => setIsThemeManagerOpen(false)} 
+      />
+
+      <NotificationToast
+        notification={currentToast}
+        onClose={() => setCurrentToast(null)}
       />
     </div>
   );
