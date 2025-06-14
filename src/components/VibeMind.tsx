@@ -15,7 +15,10 @@ import { trackActivity } from '@/services/analyticsEngine';
 
 const VibeMind: React.FC = () => {
   const [isSidebarVisible, setIsSidebarVisible] = useLocalStorage('sidebar-visible', true);
-  const { isOpen: isCommandPaletteOpen, toggleOpen: toggleCommandPalette } = useCommandPalette();
+  const [isThemeManagerOpen, setIsThemeManagerOpen] = useState(false);
+  const [isNotificationManagerOpen, setIsNotificationManagerOpen] = useState(false);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
+  const { isOpen: isCommandPaletteOpen, toggle: toggleCommandPalette } = useCommandPalette();
   
   // Initialize analytics
   useVibeAnalytics();
@@ -32,7 +35,12 @@ const VibeMind: React.FC = () => {
 
   const toggleSidebar = () => {
     setIsSidebarVisible(!isSidebarVisible);
-    trackActivity('ui', 'sidebar-toggled', { visible: !isSidebarVisible });
+    trackActivity('system', 'sidebar-toggled', { visible: !isSidebarVisible });
+  };
+
+  const handleVoiceCommand = (command: string) => {
+    console.log('Voice command received:', command);
+    trackActivity('voice', 'command-executed', { command });
   };
 
   return (
@@ -53,14 +61,22 @@ const VibeMind: React.FC = () => {
       {/* Command Palette */}
       <CommandPalette 
         isOpen={isCommandPaletteOpen} 
-        onClose={() => toggleCommandPalette(false)} 
+        onClose={() => toggleCommandPalette()} 
+        setIsThemeManagerOpen={setIsThemeManagerOpen}
       />
 
       {/* Voice Controller */}
-      <VoiceController />
+      <VoiceController 
+        isEnabled={isVoiceEnabled}
+        onToggleEnabled={setIsVoiceEnabled}
+        onVoiceCommand={handleVoiceCommand}
+      />
 
       {/* Notification Manager */}
-      <NotificationManager />
+      <NotificationManager 
+        isOpen={isNotificationManagerOpen}
+        onClose={() => setIsNotificationManagerOpen(false)}
+      />
     </div>
   );
 };
