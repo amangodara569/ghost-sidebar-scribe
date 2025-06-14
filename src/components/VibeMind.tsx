@@ -26,8 +26,11 @@ const VibeMind: React.FC = () => {
   // Initialize voice commands
   useVoiceCommands();
   
-  // Initialize notifications
-  useNotifications();
+  // Initialize notifications with proper configuration
+  useNotifications({
+    position: 'top-right',
+    duration: 5000
+  });
 
   useEffect(() => {
     trackActivity('system', 'vibemind-mounted');
@@ -50,7 +53,7 @@ const VibeMind: React.FC = () => {
         <WidgetContainer />
       </div>
 
-      {/* Hovering Sidebar Overlay */}
+      {/* Hovering Sidebar Overlay - This is the movable sidebar you want */}
       <SidebarOverlay 
         isVisible={isSidebarVisible} 
         onToggleVisibility={toggleSidebar}
