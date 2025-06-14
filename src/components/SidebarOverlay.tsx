@@ -228,7 +228,7 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
   const MinimizedTab = () => (
     <motion.div
       ref={minimizedTabRef}
-      className="fixed z-50 bg-gray-900/90 backdrop-blur-md rounded-r-lg shadow-2xl border-r border-gray-600/50 cursor-pointer hover:bg-gray-800/90 transition-colors"
+      className="fixed z-50 minimized-tab cursor-pointer hover:bg-gray-800/90 transition-all duration-300"
       style={{
         left: 0,
         top: bounds.y + 100,
@@ -239,7 +239,7 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
       initial={{ x: -40, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: -40, opacity: 0 }}
-      whileHover={{ x: 4 }}
+      whileHover={{ x: 6, scale: 1.02 }}
       role="button"
       aria-label="Restore VibeMind sidebar"
     >
@@ -259,7 +259,7 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
           ) : (
             <motion.div
               ref={sidebarRef}
-              className="fixed z-50 bg-gray-900/85 backdrop-blur-md rounded-lg shadow-2xl border border-gray-600/30 overflow-hidden select-none"
+              className="fixed z-50 floating-sidebar overflow-hidden select-none theme-transition"
               style={{
                 left: bounds.x,
                 top: bounds.y,
@@ -269,7 +269,7 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
               }}
               initial={{
                 opacity: 0,
-                scale: 0.95,
+                scale: 0.96,
                 x: bounds.x + 20,
               }}
               animate={{
@@ -279,12 +279,12 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
               }}
               exit={{
                 opacity: 0,
-                scale: 0.95,
+                scale: 0.96,
                 x: bounds.x + 20,
               }}
               transition={{
-                duration: 0.3,
-                ease: [0.4, 0.0, 0.2, 1]
+                duration: 0.4,
+                ease: [0.25, 0.46, 0.45, 0.94]
               }}
               role="dialog"
               aria-label="VibeMind Sidebar"
@@ -292,42 +292,70 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
             >
               {/* Draggable Header */}
               <motion.div
-                className="draggable-header flex items-center justify-between px-3 py-2 bg-gray-800/60 border-b border-gray-600/30 select-none"
+                className="draggable-header floating-sidebar-header flex items-center justify-between px-4 py-3 select-none theme-transition"
                 style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
                 onMouseDown={handleMouseDown}
-                whileHover={{ backgroundColor: 'rgba(75, 85, 99, 0.4)' }}
+                whileHover={{ backgroundColor: 'rgba(45, 45, 45, 0.8)' }}
               >
-                <div className="flex items-center gap-2 pointer-events-none">
-                  <div className="w-3 h-3 rounded-full bg-red-500/70" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
-                  <div className="w-3 h-3 rounded-full bg-green-500/70" />
-                  <span className="text-sm text-gray-300 ml-2 font-medium">VibeMind</span>
+                <div className="flex items-center gap-3 pointer-events-none">
+                  <div className="flex gap-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500/80 shadow-sm" />
+                    <div className="w-3 h-3 rounded-full bg-yellow-500/80 shadow-sm" />
+                    <div className="w-3 h-3 rounded-full bg-green-500/80 shadow-sm" />
+                  </div>
+                  <span className="text-sm font-semibold ml-2" style={{ color: 'var(--theme-text)' }}>
+                    VibeMind
+                  </span>
                 </div>
                 
-                <div className="flex items-center gap-1 pointer-events-auto">
+                <div className="flex items-center gap-2 pointer-events-auto">
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-6 w-6 p-0 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50"
+                    className="h-7 w-7 p-0 rounded-md transition-all duration-300 hover:scale-110"
+                    style={{
+                      color: 'var(--theme-text-secondary)',
+                      backgroundColor: 'transparent'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(60, 60, 60, 0.6)';
+                      e.currentTarget.style.color = 'var(--theme-text)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = 'var(--theme-text-secondary)';
+                    }}
                     onClick={handleMinimize}
                     aria-label="Minimize sidebar"
                   >
-                    <Minimize className="w-3 h-3" />
+                    <Minimize className="w-3.5 h-3.5" />
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-6 w-6 p-0 text-gray-400 hover:text-red-400 hover:bg-gray-700/50"
+                    className="h-7 w-7 p-0 rounded-md transition-all duration-300 hover:scale-110"
+                    style={{
+                      color: 'var(--theme-text-secondary)',
+                      backgroundColor: 'transparent'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.2)';
+                      e.currentTarget.style.color = '#ef4444';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = 'var(--theme-text-secondary)';
+                    }}
                     onClick={onToggleVisibility}
                     aria-label="Close sidebar"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3.5 h-3.5" />
                   </Button>
                 </div>
               </motion.div>
 
               {/* Content Area */}
-              <div className="h-full overflow-auto p-3 pb-16 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+              <div className="floating-sidebar-content h-full overflow-auto pb-20 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
                 {children}
               </div>
 
@@ -335,14 +363,14 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
               {RESIZE_HANDLES.map(({ direction, cursor }) => (
                 <div
                   key={direction}
-                  className={`absolute bg-transparent hover:bg-blue-500/20 transition-colors ${
+                  className={`absolute transition-colors duration-200 hover:bg-blue-500/10 ${
                     direction.includes('n') ? 'top-0' : direction.includes('s') ? 'bottom-0' : 'top-2 bottom-2'
                   } ${
                     direction.includes('w') ? 'left-0' : direction.includes('e') ? 'right-0' : 'left-2 right-2'
                   } ${
                     direction.length === 1 
-                      ? (direction === 'n' || direction === 's') ? 'h-1 left-2 right-2' : 'w-1 top-2 bottom-2'
-                      : 'w-3 h-3'
+                      ? (direction === 'n' || direction === 's') ? 'h-2 left-2 right-2' : 'w-2 top-2 bottom-2'
+                      : 'w-4 h-4'
                   }`}
                   style={{ cursor }}
                   onMouseDown={(e) => handleResizeMouseDown(e, direction)}
@@ -350,8 +378,11 @@ const SidebarOverlay: React.FC<SidebarOverlayProps> = ({
               ))}
 
               {/* Drag Handle */}
-              <div className="absolute top-1/2 left-1 transform -translate-y-1/2 text-gray-500 opacity-50 hover:opacity-100 transition-opacity pointer-events-none">
-                <GripHorizontal className="w-3 h-3 rotate-90" />
+              <div className="absolute top-1/2 left-2 transform -translate-y-1/2 opacity-30 hover:opacity-60 transition-opacity duration-300 pointer-events-none">
+                <GripHorizontal 
+                  className="w-3 h-3 rotate-90" 
+                  style={{ color: 'var(--theme-text-secondary)' }}
+                />
               </div>
             </motion.div>
           )}
