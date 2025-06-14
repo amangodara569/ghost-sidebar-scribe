@@ -47,6 +47,12 @@ export interface IElectronAPI {
   'recommendations:getLatest': () => Promise<any[]>;
   'recommendations:dismiss': (id: string) => Promise<void>;
   
+  // FreeSpace Writing
+  'freespace:getAll': () => Promise<any[]>;
+  'freespace:getById': (id: string) => Promise<any>;
+  'freespace:save': (space: any) => Promise<void>;
+  'freespace:delete': (id: string) => Promise<void>;
+  
   // Widgets
   'widgets:getAll': () => Promise<any[]>;
   'widgets:updateOrder': (widgets: any[]) => Promise<void>;
