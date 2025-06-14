@@ -1,16 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Bell, Zap, Settings } from 'lucide-react';
-import { Notification } from '@/services/NotificationService';
+import { X, Bell, Zap, Settings, Clock } from 'lucide-react';
+import { SmartNotification } from '@/services/NotificationEngine';
+import { Button } from '@/components/ui/button';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface NotificationToastProps {
-  notification: Notification | null;
+  notification: SmartNotification | null;
   onClose: () => void;
 }
 
 const NotificationToast: React.FC<NotificationToastProps> = ({ notification, onClose }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const { snoozeNotification } = useNotifications();
 
   useEffect(() => {
     if (notification) {
@@ -18,7 +21,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({ notification, onC
       const timer = setTimeout(() => {
         setIsVisible(false);
         setTimeout(onClose, 300); // Allow animation to complete
-      }, 5000);
+      }, 6000); // Show for 6 seconds
 
       return () => clearTimeout(timer);
     }
@@ -28,13 +31,36 @@ const NotificationToast: React.FC<NotificationToastProps> = ({ notification, onC
     switch (type) {
       case 'reminder':
         return <Bell className="w-5 h-5 text-blue-400" />;
-      case 'focus':
+      case 'timer':
         return <Zap className="w-5 h-5 text-green-400" />;
-      case 'system':
-        return <Settings className="w-5 h-5 text-purple-400" />;
+      case 'ai':
+        return <span className="text-lg">🧠</span>;
+      case 'spotify':
+        return <span className="text-lg">🎵</span>;
       default:
         return <Bell className="w-5 h-5 text-gray-400" />;
     }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'border-red-500/50 bg-red-900/20';
+      case 'medium': return 'border-yellow-500/50 bg-yellow-900/20';
+      default: return 'border-blue-500/50 bg-blue-900/20';
+    }
+  };
+
+  const handleSnooze = (minutes: number) => {
+    if (notification) {
+      snoozeNotification(notification.id, minutes);
+      setIsVisible(false);
+      setTimeout(onClose, 300);
+    }
+  };
+
+  const handleClose = () => {
+    setIsVisible(false);
+    setTimeout(onClose, 300);
   };
 
   if (!notification) return null;
@@ -50,8 +76,14 @@ const NotificationToast: React.FC<NotificationToastProps> = ({ notification, onC
           className="fixed bottom-4 right-4 z-50 max-w-sm"
         >
           <div 
-            className="bg-gray-800 border border-gray-600 rounded-lg shadow-2xl p-4 backdrop-blur-sm"
-            style={{ backgroundColor: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}
+            className={`
+              rounded-lg shadow-2xl p-4 backdrop-blur-sm border
+              ${getPriorityColor(notification.priority)}
+            `}
+            style={{ 
+              backgroundColor: 'var(--theme-surface)', 
+              borderColor: 'var(--theme-border)'
+            }}
           >
             <div className="flex items-start gap-3">
               {getIcon(notification.type)}
@@ -59,15 +91,36 @@ const NotificationToast: React.FC<NotificationToastProps> = ({ notification, onC
                 <h4 className="font-semibold text-white text-sm mb-1">
                   {notification.title}
                 </h4>
-                <p className="text-gray-300 text-sm">
+                <p className="text-gray-300 text-sm mb-3">
                   {notification.message}
                 </p>
+                
+                {/* Action buttons for dismissible notifications */}
+                {notification.type === 'reminder' && (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleSnooze(5)}
+                      className="text-xs bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600"
+                    >
+                      <Clock className="w-3 h-3 mr-1" />
+                      5m
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleSnooze(15)}
+                      className="text-xs bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600"
+                    >
+                      <Clock className="w-3 h-3 mr-1" />
+                      15m
+                    </Button>
+                  </div>
+                )}
               </div>
               <button
-                onClick={() => {
-                  setIsVisible(false);
-                  setTimeout(onClose, 300);
-                }}
+                onClick={handleClose}
                 className="text-gray-400 hover:text-white transition-colors p-1"
               >
                 <X className="w-4 h-4" />

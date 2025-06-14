@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -46,8 +47,8 @@ const PluginStore: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
   };
 
   const filteredPlugins = plugins.filter(plugin =>
-    plugin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    plugin.description.toLowerCase().includes(searchTerm.toLowerCase())
+    plugin.config?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    plugin.config?.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const availablePlugins: Plugin[] = [
@@ -89,24 +90,26 @@ const PluginStore: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
 
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
           {filteredPlugins.map((plugin) => (
-            <Card key={plugin.id} className="bg-gray-900 border-gray-700">
+            <Card key={plugin.config?.id || plugin.id} className="bg-gray-900 border-gray-700">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-medium text-gray-100">{plugin.name}</CardTitle>
-                  <Badge variant="secondary">{plugin.version}</Badge>
+                  <CardTitle className="text-lg font-medium text-gray-100">
+                    {plugin.config?.name || 'Unknown Plugin'}
+                  </CardTitle>
+                  <Badge variant="secondary">{plugin.config?.version || '1.0.0'}</Badge>
                 </div>
               </CardHeader>
               <CardContent className="text-sm text-gray-400 space-y-1">
-                <p>{plugin.description}</p>
-                <p>Author: {plugin.author}</p>
+                <p>{plugin.config?.description || 'No description available'}</p>
+                <p>Author: {plugin.config?.author || 'Unknown'}</p>
                 <div className="flex items-center justify-between">
-                  <label htmlFor={`plugin-toggle-${plugin.id}`} className="text-gray-200">
+                  <label htmlFor={`plugin-toggle-${plugin.config?.id || plugin.id}`} className="text-gray-200">
                     {plugin.enabled ? 'Enabled' : 'Disabled'}
                   </label>
                   <Switch
-                    id={`plugin-toggle-${plugin.id}`}
+                    id={`plugin-toggle-${plugin.config?.id || plugin.id}`}
                     checked={plugin.enabled}
-                    onCheckedChange={() => handleToggle(plugin.id)}
+                    onCheckedChange={() => handleToggle(plugin.config?.id || plugin.id)}
                   />
                 </div>
                 <div className="flex justify-end space-x-2">
@@ -114,7 +117,7 @@ const PluginStore: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
                     variant="outline"
                     size="sm"
                     className="bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600"
-                    onClick={() => handleUninstall(plugin.id)}
+                    onClick={() => handleUninstall(plugin.config?.id || plugin.id)}
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
                     Uninstall
@@ -133,7 +136,7 @@ const PluginStore: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
           ))}
 
           {availablePlugins
-            .filter(plugin => !plugins.find(p => p.id === plugin.id))
+            .filter(plugin => !plugins.find(p => p.config?.id === plugin.id))
             .map((plugin) => (
               <Card key={plugin.id} className="bg-gray-900 border-gray-700">
                 <CardHeader>

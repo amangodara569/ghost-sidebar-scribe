@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { Palette, Plug } from 'lucide-react';
+import { Palette, Plug, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import NotesWidget from './widgets/NotesWidget';
 import ToDoWidget from './widgets/ToDoWidget';
@@ -25,6 +25,8 @@ import { createCommandRegistry } from '@/commands/commandRegistry';
 import VibeMind from './VibeMind';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
 import { usePluginSystem } from '@/hooks/usePluginSystem';
+import NotificationManager from './NotificationManager';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface Widget {
   id: string;
@@ -36,7 +38,8 @@ interface Widget {
 const WidgetContainer: React.FC = () => {
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [isThemeManagerOpen, setIsThemeManagerOpen] = useState(false);
-  const [currentToast, setCurrentToast] = useState<Notification | null>(null);
+  const [isNotificationManagerOpen, setIsNotificationManagerOpen] = useState(false);
+  const [currentToast, setCurrentToast] = useState<any>(null);
   const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
   const { currentTheme, isCustom } = useTheme();
   const { 
@@ -49,6 +52,7 @@ const WidgetContainer: React.FC = () => {
   const commandPalette = useCommandPalette();
   const { trackNoteActivity, trackTodoActivity, trackTimerActivity, trackSpotifyActivity } = useActivityTracker();
   const [currentFocusWidget, setCurrentFocusWidget] = useState<string>('');
+  const { pendingCount } = useNotifications();
   
   // Plugin system integration
   const {
@@ -265,6 +269,23 @@ const WidgetContainer: React.FC = () => {
       {/* Theme Toggle Button */}
       <div className="flex justify-end mb-4 gap-2">
         <button
+          onClick={() => setIsNotificationManagerOpen(true)}
+          className="p-2 rounded-lg transition-all duration-200 hover:scale-105 relative"
+          style={{ 
+            backgroundColor: 'var(--theme-surface)',
+            color: 'var(--theme-accent)',
+            border: `1px solid var(--theme-border)`
+          }}
+          title="Notifications"
+        >
+          <Bell className="w-5 h-5" />
+          {pendingCount > 0 && (
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
+              {pendingCount > 9 ? '9+' : pendingCount}
+            </div>
+          )}
+        </button>
+        <button
           onClick={openPluginStore}
           className="p-2 rounded-lg transition-all duration-200 hover:scale-105"
           style={{ 
@@ -354,6 +375,11 @@ const WidgetContainer: React.FC = () => {
       <PluginStore
         isOpen={isPluginStoreOpen}
         onClose={closePluginStore}
+      />
+
+      <NotificationManager
+        isOpen={isNotificationManagerOpen}
+        onClose={() => setIsNotificationManagerOpen(false)}
       />
 
       <CommandPalette
