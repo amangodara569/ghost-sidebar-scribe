@@ -54,6 +54,7 @@ export const useFocusTracker = () => {
   const scoreUpdateRef = useRef<NodeJS.Timeout>();
   const lastNudgeTimeRef = useRef(0);
   const activityListenersRef = useRef<boolean>(false);
+  const animationFrameRef = useRef<number>();
 
   // Calculate focus score based on various factors
   const calculateFocusScore = useCallback((session: ActivitySession, previousScore: number): number => {
@@ -78,9 +79,13 @@ export const useFocusTracker = () => {
     return Math.round((previousScore * 0.3) + (newScore * 0.7));
   }, []);
 
-  // Track user interactions
+  // Track user interactions with throttling
   const trackInteraction = useCallback(() => {
     const now = Date.now();
+    
+    // Throttle to prevent excessive updates
+    if (now - lastInteractionRef.current < 1000) return;
+    
     lastInteractionRef.current = now;
 
     setCurrentSession(prev => ({
@@ -113,7 +118,7 @@ export const useFocusTracker = () => {
     }, IDLE_THRESHOLD);
   }, [setFocusData, isNudgesEnabled]);
 
-  // Track specific activities - renamed from trackActivity to trackFocusActivity
+  // Track specific activities
   const trackFocusActivity = useCallback((type: 'timer' | 'note' | 'todo' | 'spotify', value: number = 1) => {
     setCurrentSession(prev => ({
       ...prev,
@@ -125,15 +130,13 @@ export const useFocusTracker = () => {
   // Track visibility changes
   const handleVisibilityChange = useCallback(() => {
     if (document.hidden) {
-      // User switched tabs/minimized
       setFocusData(prev => ({ ...prev, isIdle: true }));
     } else {
-      // User returned
       trackInteraction();
     }
   }, [trackInteraction]);
 
-  // Update focus score periodically
+  // Update focus score periodically - memoized to prevent infinite loops
   const updateFocusScore = useCallback(() => {
     const now = Date.now();
     const sessionWithEndTime = { ...currentSession, endTime: now };
@@ -184,31 +187,40 @@ export const useFocusTracker = () => {
     };
   }, [trackFocusActivity]);
 
-  // Setup activity listeners
+  // Setup activity listeners with proper cleanup
   useEffect(() => {
     if (activityListenersRef.current) return;
 
     const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
     
+    const throttledTrackInteraction = () => {
+      if (animationFrameRef.current) return;
+      animationFrameRef.current = requestAnimationFrame(() => {
+        trackInteraction();
+        animationFrameRef.current = undefined;
+      });
+    };
+
     events.forEach(event => {
-      document.addEventListener(event, trackInteraction, { passive: true });
+      document.addEventListener(event, throttledTrackInteraction, { passive: true });
     });
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Setup periodic score updates
+    // Setup periodic score updates - only once
     scoreUpdateRef.current = setInterval(updateFocusScore, SCORE_UPDATE_INTERVAL);
 
     activityListenersRef.current = true;
 
     return () => {
       events.forEach(event => {
-        document.removeEventListener(event, trackInteraction);
+        document.removeEventListener(event, throttledTrackInteraction);
       });
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       
       if (idleCheckRef.current) clearTimeout(idleCheckRef.current);
       if (scoreUpdateRef.current) clearInterval(scoreUpdateRef.current);
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
       
       activityListenersRef.current = false;
     };
