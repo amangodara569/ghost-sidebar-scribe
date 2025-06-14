@@ -12,7 +12,9 @@ import FreeSpaceWidget from './widgets/FreeSpaceWidget';
 import NotificationCenter from './widgets/NotificationCenter';
 import ThemeManager from './ThemeManager';
 import NotificationToast from './NotificationToast';
+import WorkspaceManager from './WorkspaceManager';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useWorkspace } from '@/contexts/WorkspaceContext';
 import { Notification } from '@/services/NotificationService';
 
 interface Widget {
@@ -27,11 +29,12 @@ const WidgetContainer: React.FC = () => {
   const [isThemeManagerOpen, setIsThemeManagerOpen] = useState(false);
   const [currentToast, setCurrentToast] = useState<Notification | null>(null);
   const { currentTheme, isCustom } = useTheme();
+  const { currentWorkspace, updateWorkspace } = useWorkspace();
 
   useEffect(() => {
-    // Load widget configuration from storage
+    // Load widget configuration from workspace or storage
     loadWidgets();
-  }, []);
+  }, [currentWorkspace]);
 
   // Add keyboard shortcut for theme toggle
   useEffect(() => {
@@ -56,19 +59,37 @@ const WidgetContainer: React.FC = () => {
     return () => window.removeEventListener('notification:delivered', handleNotificationDelivered as EventListener);
   }, []);
 
+  // Listen for workspace switches
+  useEffect(() => {
+    const handleWorkspaceSwitch = (event: CustomEvent<any>) => {
+      loadWidgetsFromWorkspace(event.detail);
+    };
+
+    window.addEventListener('workspace:switched', handleWorkspaceSwitch as EventListener);
+    return () => window.removeEventListener('workspace:switched', handleWorkspaceSwitch as EventListener);
+  }, []);
+
   const loadWidgets = async () => {
-    try {
-      // Use IPC to get widgets from storage
-      if (window.electronAPI) {
-        const storedWidgets = await window.electronAPI.invoke('widgets:getAll');
-        setWidgets(storedWidgets || getDefaultWidgets());
-      } else {
-        setWidgets(getDefaultWidgets());
-      }
-    } catch (error) {
-      console.error('Failed to load widgets:', error);
+    if (currentWorkspace) {
+      loadWidgetsFromWorkspace(currentWorkspace);
+    } else {
+      // Fallback to default widgets
       setWidgets(getDefaultWidgets());
     }
+  };
+
+  const loadWidgetsFromWorkspace = (workspace: any) => {
+    const workspaceWidgets = workspace.activeWidgets || [];
+    const widgetConfig = workspaceWidgets.map((widgetId: string, index: number) => {
+      const [type, id] = widgetId.split('-');
+      return {
+        id: widgetId,
+        type: type as Widget['type'],
+        order: index,
+        enabled: true,
+      };
+    });
+    setWidgets(widgetConfig);
   };
 
   const getDefaultWidgets = (): Widget[] => [
@@ -97,13 +118,10 @@ const WidgetContainer: React.FC = () => {
 
     setWidgets(updatedWidgets);
 
-    // Persist to storage
-    try {
-      if (window.electronAPI) {
-        await window.electronAPI.invoke('widgets:updateOrder', updatedWidgets);
-      }
-    } catch (error) {
-      console.error('Failed to save widget order:', error);
+    // Update workspace with new widget order
+    if (currentWorkspace && updateWorkspace) {
+      const activeWidgets = updatedWidgets.map(w => w.id);
+      await updateWorkspace(currentWorkspace.id, { activeWidgets });
     }
   };
 
@@ -138,6 +156,11 @@ const WidgetContainer: React.FC = () => {
         color: 'var(--theme-text)'
       }}
     >
+      {/* Workspace Manager */}
+      <div className="mb-4">
+        <WorkspaceManager />
+      </div>
+
       {/* Theme Toggle Button */}
       <div className="flex justify-end mb-4">
         <button
