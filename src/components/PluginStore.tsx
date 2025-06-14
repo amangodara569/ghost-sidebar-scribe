@@ -1,187 +1,169 @@
-
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Plugin, Download, Trash2, RefreshCw, Settings } from 'lucide-react';
-import { pluginManager, PluginInstance } from '@/plugins/PluginManager';
+import { Switch } from '@/components/ui/switch';
+import { Plug, Download, Settings, Trash2, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { usePluginSystem } from '@/hooks/usePluginSystem';
 import { toast } from 'sonner';
 
-interface PluginStoreProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface Plugin {
+  id: string;
+  name: string;
+  description: string;
+  author: string;
+  version: string;
+  enabled: boolean;
 }
 
-const PluginStore: React.FC<PluginStoreProps> = ({ isOpen, onClose }) => {
-  const [plugins, setPlugins] = useState<PluginInstance[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+const PluginStore: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const { plugins, loadPlugin, unloadPlugin, togglePlugin } = usePluginSystem();
 
-  useEffect(() => {
-    if (isOpen) {
-      loadPlugins();
-    }
-  }, [isOpen]);
-
-  const loadPlugins = () => {
-    const installedPlugins = pluginManager.getInstalledPlugins();
-    setPlugins(installedPlugins);
-  };
-
-  const handleTogglePlugin = (pluginId: string) => {
-    const enabled = pluginManager.togglePlugin(pluginId);
-    loadPlugins();
-    toast.success(`Plugin ${enabled ? 'enabled' : 'disabled'}`);
-  };
-
-  const handleUnloadPlugin = (pluginId: string) => {
-    if (pluginManager.unloadPlugin(pluginId)) {
-      loadPlugins();
+  const handleInstall = async (pluginPath: string) => {
+    const success = await loadPlugin(pluginPath);
+    if (success) {
+      toast.success('Plugin installed successfully!');
+    } else {
+      toast.error('Failed to install plugin.');
     }
   };
 
-  const handleLoadDemoPlugins = async () => {
-    setIsLoading(true);
-    await pluginManager.loadDefaultPlugins();
-    loadPlugins();
-    setIsLoading(false);
-  };
-
-  const handleReloadPlugins = () => {
-    loadPlugins();
-    toast.success('Plugin list refreshed');
-  };
-
-  const getPluginTypeColor = (type: string) => {
-    switch (type) {
-      case 'widget': return 'bg-blue-500';
-      case 'integration': return 'bg-green-500';
-      case 'command': return 'bg-purple-500';
-      case 'event-hook': return 'bg-orange-500';
-      default: return 'bg-gray-500';
+  const handleUninstall = async (pluginId: string) => {
+    const success = await unloadPlugin(pluginId);
+    if (success) {
+      toast.success('Plugin uninstalled successfully!');
+    } else {
+      toast.error('Failed to uninstall plugin.');
     }
   };
 
-  if (!isOpen) return null;
+  const handleToggle = (pluginId: string) => {
+    const enabled = togglePlugin(pluginId);
+    toast.success(`Plugin ${enabled ? 'enabled' : 'disabled'}!`);
+  };
+
+  const filteredPlugins = plugins.filter(plugin =>
+    plugin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    plugin.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const availablePlugins: Plugin[] = [
+    {
+      id: 'example-plugin',
+      name: 'Example Plugin',
+      description: 'A sample plugin to demonstrate the plugin system.',
+      author: 'Lovable',
+      version: '1.0.0',
+      enabled: false,
+    },
+    {
+      id: 'another-plugin',
+      name: 'Another Plugin',
+      description: 'Another sample plugin to showcase different functionalities.',
+      author: 'Lovable',
+      version: '0.5.0',
+      enabled: false,
+    },
+  ];
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background border rounded-lg w-full max-w-4xl max-h-[80vh] overflow-hidden">
-        <div className="p-6 border-b">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Plugin className="w-6 h-6" />
-              <h2 className="text-2xl font-bold">Plugin Store</h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleReloadPlugins}
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLoadDemoPlugins}
-                disabled={isLoading}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                {isLoading ? 'Loading...' : 'Load Demo Plugins'}
-              </Button>
-              <Button variant="outline" onClick={onClose}>
-                Close
-              </Button>
-            </div>
-          </div>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[625px]">
+        <DialogHeader>
+          <DialogTitle>Plugin Store</DialogTitle>
+        </DialogHeader>
+
+        <div className="mb-4 flex items-center space-x-2">
+          <Search className="w-4 h-4 text-gray-500" />
+          <Input
+            type="search"
+            placeholder="Search plugins..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="bg-gray-800 border-gray-700 text-gray-100 focus:ring-blue-500"
+          />
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[60vh]">
-          {plugins.length === 0 ? (
-            <div className="text-center py-12">
-              <Plugin className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Plugins Installed</h3>
-              <p className="text-muted-foreground mb-4">
-                Load some demo plugins to get started with the plugin system.
-              </p>
-              <Button onClick={handleLoadDemoPlugins} disabled={isLoading}>
-                <Download className="w-4 h-4 mr-2" />
-                {isLoading ? 'Loading...' : 'Load Demo Plugins'}
-              </Button>
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {plugins.map((plugin) => (
-                <Card key={plugin.config.id} className="overflow-hidden">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <CardTitle className="text-lg">{plugin.config.name}</CardTitle>
-                          <Badge 
-                            variant="secondary" 
-                            className={`text-white ${getPluginTypeColor(plugin.config.type)}`}
-                          >
-                            {plugin.config.type}
-                          </Badge>
-                          {plugin.enabled && (
-                            <Badge variant="outline" className="text-green-600 border-green-600">
-                              Active
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{plugin.config.description}</p>
-                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                          <span>by {plugin.config.author}</span>
-                          <span>v{plugin.config.version}</span>
-                          <span>Loaded {new Date(plugin.loadedAt).toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={plugin.enabled}
-                          onCheckedChange={() => handleTogglePlugin(plugin.config.id)}
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleUnloadPlugin(plugin.config.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  
-                  {plugin.config.settings && (
-                    <CardContent className="pt-0">
-                      <Separator className="mb-3" />
-                      <div className="text-sm">
-                        <h4 className="font-medium mb-2 flex items-center gap-1">
-                          <Settings className="w-4 h-4" />
-                          Plugin Settings
-                        </h4>
-                        <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                          {Object.entries(plugin.config.settings).map(([key, value]) => (
-                            <div key={key} className="flex justify-between">
-                              <span className="capitalize">{key.replace(/([A-Z])/g, ' $1')}:</span>
-                              <span>{String(value)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </CardContent>
-                  )}
-                </Card>
-              ))}
-            </div>
-          )}
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+          {filteredPlugins.map((plugin) => (
+            <Card key={plugin.id} className="bg-gray-900 border-gray-700">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-medium text-gray-100">{plugin.name}</CardTitle>
+                  <Badge variant="secondary">{plugin.version}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="text-sm text-gray-400 space-y-1">
+                <p>{plugin.description}</p>
+                <p>Author: {plugin.author}</p>
+                <div className="flex items-center justify-between">
+                  <label htmlFor={`plugin-toggle-${plugin.id}`} className="text-gray-200">
+                    {plugin.enabled ? 'Enabled' : 'Disabled'}
+                  </label>
+                  <Switch
+                    id={`plugin-toggle-${plugin.id}`}
+                    checked={plugin.enabled}
+                    onCheckedChange={() => handleToggle(plugin.id)}
+                  />
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600"
+                    onClick={() => handleUninstall(plugin.id)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Uninstall
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Settings className="w-4 h-4 mr-2" />
+                    Settings
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+
+          {availablePlugins
+            .filter(plugin => !plugins.find(p => p.id === plugin.id))
+            .map((plugin) => (
+              <Card key={plugin.id} className="bg-gray-900 border-gray-700">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg font-medium text-gray-100">{plugin.name}</CardTitle>
+                    <Badge variant="secondary">{plugin.version}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="text-sm text-gray-400 space-y-1">
+                  <p>{plugin.description}</p>
+                  <p>Author: {plugin.author}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-gray-100"
+                    onClick={() => handleInstall(plugin.id)}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Install
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
         </div>
-      </div>
-    </div>
+
+        <Button variant="secondary" onClick={onClose} className="mt-4">
+          Close
+        </Button>
+      </DialogContent>
+    </Dialog>
   );
 };
 

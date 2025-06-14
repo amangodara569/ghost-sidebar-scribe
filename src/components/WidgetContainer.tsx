@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import { Palette, Plugin } from 'lucide-react';
+import { Palette, Plug } from 'lucide-react';
 import { toast } from 'sonner';
 import NotesWidget from './widgets/NotesWidget';
 import ToDoWidget from './widgets/ToDoWidget';
@@ -274,7 +274,7 @@ const WidgetContainer: React.FC = () => {
           }}
           title="Plugin Store"
         >
-          <Plugin className="w-5 h-5" />
+          <Plug className="w-5 h-5" />
         </button>
         <button
           onClick={() => setIsThemeManagerOpen(true)}
