@@ -34,10 +34,11 @@ import DailySummaryPopup from './DailySummaryPopup';
 import { usePerformanceMonitor } from '@/hooks/usePerformanceMonitor';
 import { useBackgroundTasks } from '@/hooks/useBackgroundTasks';
 import ScratchpadWidget from './widgets/ScratchpadWidget';
+import StickyNotesWidget from './widgets/StickyNotesWidget';
 
 interface Widget {
   id: string;
-  type: 'notes' | 'todo' | 'timer' | 'bookmark' | 'spotify' | 'analytics' | 'freespace' | 'notifications' | 'insights' | 'scratchpad';
+  type: 'notes' | 'todo' | 'timer' | 'bookmark' | 'spotify' | 'analytics' | 'freespace' | 'notifications' | 'insights' | 'scratchpad' | 'stickynotes';
   order: number;
   enabled: boolean;
 }
@@ -181,14 +182,15 @@ const WidgetContainer: React.FC = () => {
   const getDefaultWidgets = (): Widget[] => [
     { id: 'notifications-1', type: 'notifications', order: 0, enabled: true },
     { id: 'insights-1', type: 'insights', order: 1, enabled: true },
-    { id: 'scratchpad-1', type: 'scratchpad', order: 2, enabled: true },
-    { id: 'analytics-1', type: 'analytics', order: 3, enabled: true },
-    { id: 'freespace-1', type: 'freespace', order: 4, enabled: true },
-    { id: 'notes-1', type: 'notes', order: 5, enabled: true },
-    { id: 'todo-1', type: 'todo', order: 6, enabled: true },
-    { id: 'timer-1', type: 'timer', order: 7, enabled: true },
-    { id: 'bookmark-1', type: 'bookmark', order: 8, enabled: true },
-    { id: 'spotify-1', type: 'spotify', order: 9, enabled: true },
+    { id: 'stickynotes-1', type: 'stickynotes', order: 2, enabled: true },
+    { id: 'scratchpad-1', type: 'scratchpad', order: 3, enabled: true },
+    { id: 'analytics-1', type: 'analytics', order: 4, enabled: true },
+    { id: 'freespace-1', type: 'freespace', order: 5, enabled: true },
+    { id: 'notes-1', type: 'notes', order: 6, enabled: true },
+    { id: 'todo-1', type: 'todo', order: 7, enabled: true },
+    { id: 'timer-1', type: 'timer', order: 8, enabled: true },
+    { id: 'bookmark-1', type: 'bookmark', order: 9, enabled: true },
+    { id: 'spotify-1', type: 'spotify', order: 10, enabled: true },
   ];
 
   const handleDragEnd = async (result: DropResult) => {
@@ -230,6 +232,8 @@ const WidgetContainer: React.FC = () => {
         return <NotificationCenter key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'insights':
         return <InsightsDashboard key={widget.id} widgetId={widget.id} {...commonProps} />;
+      case 'stickynotes':
+        return <StickyNotesWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'scratchpad':
         return <ScratchpadWidget key={widget.id} widgetId={widget.id} {...commonProps} />;
       case 'analytics':
