@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { SecureStorage } from '@/utils/security';
@@ -173,7 +174,7 @@ function calculateStreak(events: UsageEvent[]): number {
   const focusEvents = events.filter(e => e.type === 'focus_session');
   if (focusEvents.length === 0) return 0;
 
-  const days = new Set();
+  const days = new Set<string>();
   focusEvents.forEach(event => {
     const day = new Date(event.timestamp).toDateString();
     days.add(day);
@@ -184,8 +185,8 @@ function calculateStreak(events: UsageEvent[]): number {
   let streak = 1;
   
   for (let i = sortedDays.length - 2; i >= 0; i--) {
-    const current = new Date(sortedDays[i + 1]);
-    const previous = new Date(sortedDays[i]);
+    const current = new Date(sortedDays[i + 1] as string);
+    const previous = new Date(sortedDays[i] as string);
     const diffDays = (current.getTime() - previous.getTime()) / (1000 * 60 * 60 * 24);
     
     if (diffDays === 1) {
