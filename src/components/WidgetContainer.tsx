@@ -3,10 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import NotesWidget from './widgets/NotesWidget';
 import ToDoWidget from './widgets/ToDoWidget';
+import TimerWidget from './widgets/TimerWidget';
+import BookmarkWidget from './widgets/BookmarkWidget';
 
 interface Widget {
   id: string;
-  type: 'notes' | 'todo';
+  type: 'notes' | 'todo' | 'timer' | 'bookmark';
   order: number;
   enabled: boolean;
 }
@@ -37,6 +39,8 @@ const WidgetContainer: React.FC = () => {
   const getDefaultWidgets = (): Widget[] => [
     { id: 'notes-1', type: 'notes', order: 0, enabled: true },
     { id: 'todo-1', type: 'todo', order: 1, enabled: true },
+    { id: 'timer-1', type: 'timer', order: 2, enabled: true },
+    { id: 'bookmark-1', type: 'bookmark', order: 3, enabled: true },
   ];
 
   const handleDragEnd = async (result: DropResult) => {
@@ -70,6 +74,10 @@ const WidgetContainer: React.FC = () => {
         return <NotesWidget key={widget.id} widgetId={widget.id} />;
       case 'todo':
         return <ToDoWidget key={widget.id} widgetId={widget.id} />;
+      case 'timer':
+        return <TimerWidget key={widget.id} widgetId={widget.id} />;
+      case 'bookmark':
+        return <BookmarkWidget key={widget.id} widgetId={widget.id} />;
       default:
         return null;
     }
