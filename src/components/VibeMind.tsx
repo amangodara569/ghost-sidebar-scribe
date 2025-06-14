@@ -26,11 +26,8 @@ const VibeMind: React.FC = () => {
   // Initialize voice commands
   useVoiceCommands();
   
-  // Initialize notifications with proper configuration
-  useNotifications({
-    position: 'top-right',
-    duration: 5000
-  });
+  // Initialize notifications
+  useNotifications();
 
   useEffect(() => {
     trackActivity('system', 'vibemind-mounted');
@@ -48,12 +45,16 @@ const VibeMind: React.FC = () => {
 
   return (
     <div className="h-screen w-full overflow-hidden bg-gray-900 relative">
-      {/* Main Content */}
-      <div className="h-full w-full">
-        <WidgetContainer />
+      {/* Main Content - Simple landing/dashboard */}
+      <div className="h-full w-full flex items-center justify-center">
+        <div className="text-center text-white">
+          <h1 className="text-4xl font-bold mb-4">VibeMind</h1>
+          <p className="text-xl text-gray-300 mb-8">Your productivity companion</p>
+          <p className="text-sm text-gray-400">Press Ctrl+Shift+Space to open the sidebar</p>
+        </div>
       </div>
 
-      {/* Hovering Sidebar Overlay - This is the movable sidebar you want */}
+      {/* Movable Sidebar Overlay */}
       <SidebarOverlay 
         isVisible={isSidebarVisible} 
         onToggleVisibility={toggleSidebar}

@@ -1,21 +1,27 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Grid3X3, Settings, Brain, X, BarChart3, Palette } from 'lucide-react';
+import { Settings, Brain, BarChart3, Palette, Grid3X3 } from 'lucide-react';
 import FocusMode from './FocusMode';
 import SettingsPanel from './SettingsPanel';
 import ThemeManager from './ThemeManager';
 import AISettingsPanel from './AISettingsPanel';
+import AnalyticsTab from './AnalyticsTab';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { trackActivity } from '@/services/analyticsEngine';
-import { useVibeAnalytics } from '@/hooks/useVibeAnalytics';
 import { toast } from 'sonner';
-import AnalyticsTab from './AnalyticsTab';
+
+// Widget imports
+import NotesWidget from './widgets/NotesWidget';
+import ToDoWidget from './widgets/ToDoWidget';
+import TimerWidget from './widgets/TimerWidget';
+import SpotifyWidget from './widgets/SpotifyWidget';
+import StickyNotesWidget from './widgets/StickyNotesWidget';
 
 const WidgetContainer: React.FC = () => {
-  const [activeTab, setActiveTab] = useLocalStorage('active-tab', 'widgets');
+  const [activeTab, setActiveTab] = useLocalStorage('active-tab', 'focus');
   const [showSettings, setShowSettings] = useState(false);
   const [showThemeManager, setShowThemeManager] = useState(false);
 
@@ -24,7 +30,6 @@ const WidgetContainer: React.FC = () => {
   }, []);
 
   const tabs = [
-    { id: 'widgets', label: 'Widgets', icon: Grid3X3 },
     { id: 'focus', label: 'Focus', icon: Brain },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'settings', label: 'Settings', icon: Settings }
@@ -32,24 +37,6 @@ const WidgetContainer: React.FC = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'widgets':
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
-            {/* Add your widgets here */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Widget 1</CardTitle>
-              </CardHeader>
-              <CardContent>Content for Widget 1</CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Widget 2</CardTitle>
-              </CardHeader>
-              <CardContent>Content for Widget 2</CardContent>
-            </Card>
-          </div>
-        );
       case 'focus':
         return (
           <div className="p-4 max-w-md mx-auto">
@@ -61,8 +48,9 @@ const WidgetContainer: React.FC = () => {
       case 'settings':
         return (
           <div className="p-4">
-            <div className="max-w-2xl mx-auto space-y-4">
-              <div className="flex gap-4">
+            <div className="max-w-2xl mx-auto space-y-6">
+              {/* Quick Actions */}
+              <div className="flex gap-4 mb-6">
                 <Button
                   onClick={() => setShowSettings(true)}
                   className="flex items-center gap-2"
@@ -79,6 +67,25 @@ const WidgetContainer: React.FC = () => {
                   Theme Switcher
                 </Button>
               </div>
+              
+              {/* Widgets Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Grid3X3 className="w-5 h-5" />
+                    Widgets
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <NotesWidget />
+                    <ToDoWidget />
+                    <TimerWidget />
+                    <SpotifyWidget />
+                    <StickyNotesWidget />
+                  </div>
+                </CardContent>
+              </Card>
               
               {/* AI Settings */}
               <div className="mt-8">
