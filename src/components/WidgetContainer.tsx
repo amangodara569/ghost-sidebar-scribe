@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +7,7 @@ import { Grid3X3, Settings, Brain, X, BarChart3, Palette } from 'lucide-react';
 import FocusMode from './FocusMode';
 import SettingsPanel from './SettingsPanel';
 import ThemeManager from './ThemeManager';
+import AISettingsPanel from './AISettingsPanel';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { trackActivity } from '@/services/analyticsEngine';
 import { useVibeAnalytics } from '@/hooks/useVibeAnalytics';
@@ -78,6 +78,11 @@ const WidgetContainer: React.FC = () => {
                   <Palette className="w-4 h-4" />
                   Theme Switcher
                 </Button>
+              </div>
+              
+              {/* AI Settings */}
+              <div className="mt-8">
+                <AISettingsPanel />
               </div>
             </div>
           </div>

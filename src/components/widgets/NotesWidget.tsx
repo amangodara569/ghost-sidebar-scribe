@@ -1,9 +1,15 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { createEditor, Descendant, Editor, Transforms, Element as SlateElement } from 'slate';
 import { Slate, Editable, withReact, ReactEditor } from 'slate-react';
 import { withHistory } from 'slate-history';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Brain, Mic, MicOff } from 'lucide-react';
+import AINotesContextMenu from '../AINotesContextMenu';
+import AIPreviewModal from '../AIPreviewModal';
+import { aiNotesService } from '@/services/aiNoteService';
+import { toast } from 'sonner';
 
 interface Note {
   id: string;
@@ -24,6 +30,17 @@ const NotesWidget: React.FC<NotesWidgetProps> = ({ widgetId, className, onActivi
   const [notes, setNotes] = useState<Note[]>([]);
   const [activeNote, setActiveNote] = useState<Note | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  
+  // AI features
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiAction, setAiAction] = useState<string>('');
+  const [aiResult, setAiResult] = useState<string>('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string>('');
+  
+  // Voice recording
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
 
   const initialValue: Descendant[] = [
     {
@@ -90,8 +107,144 @@ const NotesWidget: React.FC<NotesWidgetProps> = ({ widgetId, className, onActivi
       setActiveNote(updatedNote);
       setIsEditing(false);
       
-      // Call onActivity when user saves a note
       onActivity?.();
+    }
+  };
+
+  // Get note content as plain text for AI processing
+  const getNoteText = (): string => {
+    if (!activeNote) return '';
+    return editor.children
+      .map(node => {
+        if ('children' in node) {
+          return node.children.map(child => ('text' in child ? child.text : '')).join('');
+        }
+        return '';
+      })
+      .join('\n')
+      .trim();
+  };
+
+  // AI Actions
+  const handleAIAction = async (action: 'summarize' | 'rephrase' | 'convert-todos') => {
+    const noteText = getNoteText();
+    if (!noteText) {
+      toast.error('No content to process');
+      return;
+    }
+
+    setAiAction(action);
+    setAiModalOpen(true);
+    setAiLoading(true);
+    setAiError('');
+
+    try {
+      let result;
+      switch (action) {
+        case 'summarize':
+          result = await aiNotesService.summarizeNote(noteText);
+          break;
+        case 'rephrase':
+          result = await aiNotesService.rephraseForClarity(noteText);
+          break;
+        case 'convert-todos':
+          result = await aiNotesService.convertToTodos(noteText);
+          break;
+      }
+
+      if (result.success) {
+        setAiResult(result.content);
+      } else {
+        setAiError(result.error || 'AI processing failed');
+      }
+    } catch (error) {
+      setAiError(error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleAcceptAIResult = (content: string) => {
+    if (activeNote) {
+      // Convert the AI result back to Slate format
+      const newContent: Descendant[] = content.split('\n').map(line => ({
+        children: [{ text: line }]
+      }));
+
+      // Update the editor content
+      editor.children = newContent;
+      Editor.normalize(editor, { force: true });
+
+      // Update the note
+      const updatedNote = {
+        ...activeNote,
+        content: newContent,
+        updatedAt: new Date().toISOString(),
+      };
+      
+      setActiveNote(updatedNote);
+      setIsEditing(true);
+      toast.success('AI changes applied');
+    }
+  };
+
+  // Voice to Note
+  const startVoiceRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/wav' });
+        await processVoiceRecording(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+      toast.success('Recording started...');
+    } catch (error) {
+      toast.error('Failed to access microphone');
+      console.error('Voice recording error:', error);
+    }
+  };
+
+  const stopVoiceRecording = () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+      setIsRecording(false);
+      setMediaRecorder(null);
+    }
+  };
+
+  const processVoiceRecording = async (audioBlob: Blob) => {
+    // For now, we'll use a mock transcript
+    // In a real implementation, you'd use a speech-to-text service
+    const mockTranscript = "This is a voice-generated note from the recording.";
+    
+    setAiAction('voice-to-note');
+    setAiModalOpen(true);
+    setAiLoading(true);
+    setAiError('');
+
+    try {
+      const result = await aiNotesService.generateFromVoice(mockTranscript);
+      
+      if (result.success) {
+        setAiResult(result.content);
+      } else {
+        setAiError(result.error || 'Voice processing failed');
+      }
+    } catch (error) {
+      setAiError(error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -103,11 +256,39 @@ const NotesWidget: React.FC<NotesWidgetProps> = ({ widgetId, className, onActivi
     return <Leaf {...props} />;
   }, []);
 
+  const getAIModalTitle = () => {
+    switch (aiAction) {
+      case 'summarize':
+        return 'AI Summary';
+      case 'rephrase':
+        return 'AI Rephrase';
+      case 'convert-todos':
+        return 'Convert to TODOs';
+      case 'voice-to-note':
+        return 'Voice to Note';
+      default:
+        return 'AI Assistant';
+    }
+  };
+
   return (
     <div className={`${className || ''} sidebar-widget-content`}>
       <div className="sidebar-widget-header">
         <h3 className="sidebar-widget-title">Notes</h3>
         <div className="sidebar-button-group">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
+            className="sidebar-button"
+            style={{
+              backgroundColor: isRecording ? 'var(--theme-accent)' : 'var(--theme-surface)',
+              borderColor: 'var(--theme-border)',
+              color: isRecording ? 'white' : 'var(--theme-text)'
+            }}
+          >
+            {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -154,28 +335,37 @@ const NotesWidget: React.FC<NotesWidgetProps> = ({ widgetId, className, onActivi
               }}
               placeholder="Note title..."
             />
-            <div 
-              className="min-h-[120px] rounded border p-3"
-              style={{
-                backgroundColor: 'var(--theme-background)',
-                borderColor: 'var(--theme-border)',
-                border: '1px solid'
-              }}
+            
+            <AINotesContextMenu
+              onSummarize={() => handleAIAction('summarize')}
+              onRephrase={() => handleAIAction('rephrase')}
+              onConvertToTodos={() => handleAIAction('convert-todos')}
+              onVoiceToNote={startVoiceRecording}
+              disabled={!getNoteText()}
             >
-              <Slate
-                editor={editor}
-                initialValue={activeNote.content}
-                onChange={() => setIsEditing(true)}
+              <div 
+                className="min-h-[120px] rounded border p-3"
+                style={{
+                  backgroundColor: 'var(--theme-background)',
+                  borderColor: 'var(--theme-border)',
+                  border: '1px solid'
+                }}
               >
-                <Editable
-                  renderElement={renderElement}
-                  renderLeaf={renderLeaf}
-                  placeholder="Start typing your note..."
-                  className="sidebar-text focus:outline-none min-h-[100px]"
-                  style={{ color: 'var(--theme-text)' }}
-                />
-              </Slate>
-            </div>
+                <Slate
+                  editor={editor}
+                  initialValue={activeNote.content}
+                  onChange={() => setIsEditing(true)}
+                >
+                  <Editable
+                    renderElement={renderElement}
+                    renderLeaf={renderLeaf}
+                    placeholder="Start typing your note... (Right-click for AI options)"
+                    className="sidebar-text focus:outline-none min-h-[100px]"
+                    style={{ color: 'var(--theme-text)' }}
+                  />
+                </Slate>
+              </div>
+            </AINotesContextMenu>
           </div>
         ) : (
           <div className="text-center py-8">
@@ -183,6 +373,17 @@ const NotesWidget: React.FC<NotesWidgetProps> = ({ widgetId, className, onActivi
           </div>
         )}
       </div>
+
+      <AIPreviewModal
+        isOpen={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        onAccept={handleAcceptAIResult}
+        title={getAIModalTitle()}
+        originalContent={getNoteText()}
+        aiContent={aiResult}
+        isLoading={aiLoading}
+        error={aiError}
+      />
     </div>
   );
 };
