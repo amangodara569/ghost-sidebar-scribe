@@ -14,7 +14,7 @@ interface TimerWidgetProps {
 }
 
 const TimerWidget: React.FC<TimerWidgetProps> = ({ widgetId }) => {
-  const [duration, setDuration] = useLocalStorage(`timer-duration-${widgetId}`, 25); // Default 25 minutes
+  const [duration, setDuration] = useLocalStorage(`timer-duration-${widgetId}`, 25);
   const [timeLeft, setTimeLeft] = useLocalStorage(`timer-time-left-${widgetId}`, 25 * 60);
   const [isRunning, setIsRunning] = useLocalStorage(`timer-is-running-${widgetId}`, false);
   const [lastUpdateTime, setLastUpdateTime] = useLocalStorage(`timer-last-update-${widgetId}`, Date.now());
@@ -22,31 +22,28 @@ const TimerWidget: React.FC<TimerWidgetProps> = ({ widgetId }) => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { logCustomMetric } = usePerformanceMonitor('TimerWidget');
   const { registerTask, unregisterTask } = useBackgroundTasks();
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Restore timer state on mount if it was running
+  // Initialize timer state only once on mount
   useEffect(() => {
-    if (isRunning && timeLeft > 0) {
-      const now = Date.now();
-      const timePassed = Math.floor((now - lastUpdateTime) / 1000);
-      const newTimeLeft = Math.max(0, timeLeft - timePassed);
-      
-      if (newTimeLeft > 0) {
-        setTimeLeft(newTimeLeft);
-        startCountdown();
-      } else {
-        setTimeLeft(0);
-        setIsRunning(false);
-        handleTimerComplete();
+    if (!isInitialized) {
+      if (isRunning && timeLeft > 0) {
+        const now = Date.now();
+        const timePassed = Math.floor((now - lastUpdateTime) / 1000);
+        const newTimeLeft = Math.max(0, timeLeft - timePassed);
+        
+        if (newTimeLeft > 0) {
+          setTimeLeft(newTimeLeft);
+          startCountdown();
+        } else {
+          setTimeLeft(0);
+          setIsRunning(false);
+          handleTimerComplete();
+        }
       }
+      setIsInitialized(true);
     }
-  }, []);
-
-  // Update last update time when timer is running
-  useEffect(() => {
-    if (isRunning) {
-      setLastUpdateTime(Date.now());
-    }
-  }, [isRunning, timeLeft]);
+  }, [isInitialized, isRunning, timeLeft, lastUpdateTime]);
 
   const startCountdown = () => {
     if (intervalRef.current) {
@@ -74,24 +71,20 @@ const TimerWidget: React.FC<TimerWidgetProps> = ({ widgetId }) => {
       intervalRef.current = null;
     }
     
-    // Show notification
     toast.success("⏰ Time's up!", {
       description: "Your timer has finished!",
       duration: 5000,
     });
     
-    // Optional vibration if supported
     if ('vibrate' in navigator) {
       navigator.vibrate([200, 100, 200]);
     }
     
     logCustomMetric('timer-completed', duration);
-    console.log('Timer completed!');
   };
 
   const handleStart = () => {
     if (timeLeft <= 0) {
-      // If timer is at 0, reset to duration first
       setTimeLeft(duration * 60);
     }
     
@@ -99,7 +92,6 @@ const TimerWidget: React.FC<TimerWidgetProps> = ({ widgetId }) => {
     setLastUpdateTime(Date.now());
     startCountdown();
     logCustomMetric('timer-started', timeLeft);
-    console.log('Timer started:', { timeLeft });
   };
 
   const handlePause = () => {
@@ -109,7 +101,6 @@ const TimerWidget: React.FC<TimerWidgetProps> = ({ widgetId }) => {
       intervalRef.current = null;
     }
     logCustomMetric('timer-paused', timeLeft);
-    console.log('Timer paused');
   };
 
   const handleReset = () => {
@@ -121,7 +112,6 @@ const TimerWidget: React.FC<TimerWidgetProps> = ({ widgetId }) => {
     setTimeLeft(duration * 60);
     setLastUpdateTime(Date.now());
     logCustomMetric('timer-reset', 1);
-    console.log('Timer reset');
   };
 
   const handleDurationChange = (newDuration: number) => {
@@ -155,7 +145,6 @@ const TimerWidget: React.FC<TimerWidgetProps> = ({ widgetId }) => {
         id: `timer-${widgetId}`,
         interval: 1000,
         callback: () => {
-          // This helps maintain timer state in background
           setLastUpdateTime(Date.now());
         },
         enabled: true
@@ -166,6 +155,10 @@ const TimerWidget: React.FC<TimerWidgetProps> = ({ widgetId }) => {
 
     return () => unregisterTask(`timer-${widgetId}`);
   }, [isRunning, timeLeft, widgetId, registerTask, unregisterTask]);
+
+  if (!isInitialized) {
+    return <div className="bg-transparent border-none p-3">Loading...</div>;
+  }
 
   return (
     <motion.div 
@@ -208,7 +201,7 @@ const TimerWidget: React.FC<TimerWidgetProps> = ({ widgetId }) => {
             timeLeft <= 60 ? 'text-yellow-400' : 
             'text-blue-400'
           }`}
-          key={timeLeft} // Force re-render for smooth transitions
+          key={timeLeft}
           initial={{ scale: 0.95 }}
           animate={{ scale: 1 }}
           transition={{ duration: 0.1 }}

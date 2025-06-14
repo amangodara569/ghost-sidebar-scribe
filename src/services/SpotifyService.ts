@@ -16,7 +16,7 @@ interface SpotifyAuthConfig {
 }
 
 class SpotifyService {
-  private clientId = ''; // Will be set by user
+  private clientId = '';
   private redirectUri = window.location.origin;
   private scopes = [
     'user-read-playback-state',
@@ -33,8 +33,11 @@ class SpotifyService {
   }
 
   setClientId(clientId: string) {
-    this.clientId = clientId;
-    localStorage.setItem('spotify_client_id', clientId);
+    if (!clientId || clientId.trim() === '') {
+      throw new Error('Client ID cannot be empty');
+    }
+    this.clientId = clientId.trim();
+    localStorage.setItem('spotify_client_id', this.clientId);
   }
 
   getClientId(): string {
@@ -42,22 +45,43 @@ class SpotifyService {
   }
 
   private loadTokensFromStorage() {
-    this.accessToken = localStorage.getItem('spotify_access_token');
-    this.refreshToken = localStorage.getItem('spotify_refresh_token');
-    const expiry = localStorage.getItem('spotify_token_expiry');
-    this.tokenExpiry = expiry ? parseInt(expiry) : null;
+    try {
+      this.accessToken = localStorage.getItem('spotify_access_token');
+      this.refreshToken = localStorage.getItem('spotify_refresh_token');
+      const expiry = localStorage.getItem('spotify_token_expiry');
+      this.tokenExpiry = expiry ? parseInt(expiry) : null;
+      
+      // Load client ID
+      this.clientId = localStorage.getItem('spotify_client_id') || '';
+    } catch (error) {
+      console.error('Failed to load tokens from storage:', error);
+      this.clearTokens();
+    }
   }
 
   private saveTokensToStorage() {
-    if (this.accessToken) {
-      localStorage.setItem('spotify_access_token', this.accessToken);
+    try {
+      if (this.accessToken) {
+        localStorage.setItem('spotify_access_token', this.accessToken);
+      }
+      if (this.refreshToken) {
+        localStorage.setItem('spotify_refresh_token', this.refreshToken);
+      }
+      if (this.tokenExpiry) {
+        localStorage.setItem('spotify_token_expiry', this.tokenExpiry.toString());
+      }
+    } catch (error) {
+      console.error('Failed to save tokens to storage:', error);
     }
-    if (this.refreshToken) {
-      localStorage.setItem('spotify_refresh_token', this.refreshToken);
-    }
-    if (this.tokenExpiry) {
-      localStorage.setItem('spotify_token_expiry', this.tokenExpiry.toString());
-    }
+  }
+
+  private clearTokens() {
+    this.accessToken = null;
+    this.refreshToken = null;
+    this.tokenExpiry = null;
+    localStorage.removeItem('spotify_access_token');
+    localStorage.removeItem('spotify_refresh_token');
+    localStorage.removeItem('spotify_token_expiry');
   }
 
   isAuthenticated(): boolean {
@@ -81,6 +105,16 @@ class SpotifyService {
   }
 
   async handleAuthCallback(code: string): Promise<boolean> {
+    if (!code) {
+      console.error('No authorization code provided');
+      return false;
+    }
+
+    if (!this.clientId) {
+      console.error('Client ID not set');
+      return false;
+    }
+
     try {
       const response = await fetch('https://accounts.spotify.com/api/token', {
         method: 'POST',
@@ -96,10 +130,18 @@ class SpotifyService {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to exchange code for token');
+        const errorData = await response.json().catch(() => null);
+        console.error('Auth callback failed:', errorData);
+        return false;
       }
 
       const data = await response.json();
+      
+      if (!data.access_token) {
+        console.error('No access token in response');
+        return false;
+      }
+
       this.accessToken = data.access_token;
       this.refreshToken = data.refresh_token;
       this.tokenExpiry = Date.now() + (data.expires_in * 1000);
@@ -113,7 +155,10 @@ class SpotifyService {
   }
 
   private async refreshAccessToken(): Promise<boolean> {
-    if (!this.refreshToken) return false;
+    if (!this.refreshToken || !this.clientId) {
+      console.error('Cannot refresh token: missing refresh token or client ID');
+      return false;
+    }
 
     try {
       const response = await fetch('https://accounts.spotify.com/api/token', {
@@ -129,10 +174,18 @@ class SpotifyService {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to refresh token');
+        console.error('Token refresh failed:', response.status);
+        this.clearTokens();
+        return false;
       }
 
       const data = await response.json();
+      
+      if (!data.access_token) {
+        console.error('No access token in refresh response');
+        return false;
+      }
+
       this.accessToken = data.access_token;
       this.tokenExpiry = Date.now() + (data.expires_in * 1000);
       
@@ -144,6 +197,7 @@ class SpotifyService {
       return true;
     } catch (error) {
       console.error('Token refresh error:', error);
+      this.clearTokens();
       return false;
     }
   }
@@ -163,29 +217,41 @@ class SpotifyService {
       throw new Error('Authentication required');
     }
 
-    const response = await fetch(`https://api.spotify.com/v1${endpoint}`, {
-      ...options,
-      headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
+    try {
+      const response = await fetch(`https://api.spotify.com/v1${endpoint}`, {
+        ...options,
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+      });
 
-    if (response.status === 401) {
-      // Token expired, try refresh
-      if (await this.refreshAccessToken()) {
-        return this.makeApiCall(endpoint, options);
+      if (response.status === 401) {
+        // Token expired, try refresh once
+        if (await this.refreshAccessToken()) {
+          return this.makeApiCall(endpoint, options);
+        }
+        throw new Error('Authentication expired');
       }
-      throw new Error('Authentication expired');
-    }
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.error?.message || `HTTP ${response.status}`);
-    }
+      if (response.status === 204) {
+        // No content response (common for control endpoints)
+        return null;
+      }
 
-    return response.json();
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error?.message || `HTTP ${response.status}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Network error - please check your connection');
+      }
+      throw error;
+    }
   }
 
   async getCurrentTrack(): Promise<SpotifyTrack | null> {
@@ -197,13 +263,13 @@ class SpotifyService {
       }
 
       return {
-        name: data.item.name,
-        artist: data.item.artists[0]?.name || 'Unknown Artist',
-        album: data.item.album.name,
-        albumArt: data.item.album.images[0]?.url || '',
-        duration: data.item.duration_ms,
-        progress: data.progress_ms,
-        isPlaying: data.is_playing,
+        name: data.item.name || 'Unknown Track',
+        artist: data.item.artists?.[0]?.name || 'Unknown Artist',
+        album: data.item.album?.name || 'Unknown Album',
+        albumArt: data.item.album?.images?.[0]?.url || '',
+        duration: data.item.duration_ms || 0,
+        progress: data.progress_ms || 0,
+        isPlaying: data.is_playing || false,
       };
     } catch (error) {
       console.error('Get current track error:', error);
@@ -212,28 +278,45 @@ class SpotifyService {
   }
 
   async play(): Promise<void> {
-    await this.makeApiCall('/me/player/play', { method: 'PUT' });
+    try {
+      await this.makeApiCall('/me/player/play', { method: 'PUT' });
+    } catch (error) {
+      console.error('Play error:', error);
+      throw error;
+    }
   }
 
   async pause(): Promise<void> {
-    await this.makeApiCall('/me/player/pause', { method: 'PUT' });
+    try {
+      await this.makeApiCall('/me/player/pause', { method: 'PUT' });
+    } catch (error) {
+      console.error('Pause error:', error);
+      throw error;
+    }
   }
 
   async next(): Promise<void> {
-    await this.makeApiCall('/me/player/next', { method: 'POST' });
+    try {
+      await this.makeApiCall('/me/player/next', { method: 'POST' });
+    } catch (error) {
+      console.error('Next track error:', error);
+      throw error;
+    }
   }
 
   async previous(): Promise<void> {
-    await this.makeApiCall('/me/player/previous', { method: 'POST' });
+    try {
+      await this.makeApiCall('/me/player/previous', { method: 'POST' });
+    } catch (error) {
+      console.error('Previous track error:', error);
+      throw error;
+    }
   }
 
   logout() {
-    this.accessToken = null;
-    this.refreshToken = null;
-    this.tokenExpiry = null;
-    localStorage.removeItem('spotify_access_token');
-    localStorage.removeItem('spotify_refresh_token');
-    localStorage.removeItem('spotify_token_expiry');
+    this.clearTokens();
+    this.clientId = '';
+    localStorage.removeItem('spotify_client_id');
   }
 }
 
